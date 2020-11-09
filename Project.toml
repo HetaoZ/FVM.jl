@@ -1,0 +1,13 @@
+name = "FVM"
+uuid = "642af85a-1a5f-42d5-b31d-7ad52e664d57"
+authors = ["Hetao Z."]
+version = "0.1.0"
+
+[compat]
+julia = "1.5"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
