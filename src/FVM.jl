@@ -22,6 +22,7 @@ const RK_COEFF = [1.0 0.75 1/3;
 
 
 include("base.jl")
+include("utils.jl")
 include("io_pre.jl")
 include("state.jl")
 include("boundary.jl")
