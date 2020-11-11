@@ -42,6 +42,14 @@ function Cell(dim::Int; rho::T = 1.0, u::Array{T} = zeros(Float64,dim), p::T = 1
     zeros(Int,dim), zeros(Float64,dim))  
 end
 
+function clear_cell!(c::Cell)
+    c.rho = 0.
+    c.u = zeros(Float64, size(c.u))
+    c.e = 0.
+    c.p = 0.
+    c.w = zeros(Float64, size(c.w))
+end
+
 """
 流场
 """
@@ -171,4 +179,13 @@ function showfield!(c::AbstractArray, str::String, inds::UnitRange{Int64}...; ax
         end
     end
     display(a)
+end
+
+function get_point_LD!(x::Vector{Float64}, f::Fluid)
+    return [ceil(Int, (x[k]-f.point1[k])/f.d[k]-0.5+f.ng) for k = 1:f.dim]
+end
+
+function get_point_RU!(x::Vector{Float64},f::Fluid)
+    iLD = get_point_LD!(x, f)
+    return iLD .+ 1
 end
