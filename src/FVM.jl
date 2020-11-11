@@ -4,7 +4,7 @@ using PyPlot
 using DelimitedFiles, Printf, Distributed, DistributedArrays, LinearAlgebra, Statistics
 using MathKits
 const MK = MathKits
-export Fluid, Cell, copy!, fill_fluid!, set_boundaries!, after_shock, fvm_solve!
+export Fluid, Cell, fill_fluid!, fvm_set_bounds!!, after_shock, fvm_solve!
 
 const OUTPUTDATA = true
 const AUSM_Kp = 0.25
