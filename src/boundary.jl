@@ -17,7 +17,7 @@ function ghost_boundary_cell!(cells::SubArray, gcells::Array{Cell}, boundary::St
     end 
 end
 
-function fvm_set_bounds!!(f::Fluid, boundaries::Array{String})
+function fvm_set_bounds!(f::Fluid, boundaries::Array{String})
     f.boundaries = boundaries
     update_boundaries!(f)
 end
