@@ -26,12 +26,12 @@ end
 function fetch_data(f, field)
     datadim = length(getfield(f.cells[1], field))
     if datadim == 1
-        a = Array{Any}(undef, size(f.cells))
+        a = Array{typeof(getfield(f.cells[1], field))}(undef, size(f.cells))
         for i in eachindex(f.cells)
             a[i] = getfield(f.cells[i], field)
         end
     else
-        a = Array{Any}(undef, datadim, size(f.cells))
+        a = Array{eltype(getfield(f.cells[1], field))}(undef, datadim, size(f.cells))
         for i in eachindex(f.cells)
             a[:, i] = getfield(f.cells[i], field)
         end
