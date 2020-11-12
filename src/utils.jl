@@ -8,7 +8,7 @@ end
 
 function index_to_pid(k::Union{Array{Int}, CartesianIndex}; nzone::Array{Int} = [1], dist::Array{Int} = [1])
     K = cld.(Tuple(k), nzone ./ dist)
-    pid = workers()[Int(K[1] + [K[i] - 1 for i in 2:length(K)]' * [MK.product(dist[1:i]) for i in 1:length(K)-1])]
+    pid = workers()[Int(K[1] + [K[i] - 1 for i in 2:length(K)]' * [prod(dist[1:i]) for i in 1:length(K)-1])]
     return pid
 end
 
@@ -20,10 +20,10 @@ function pid_to_index(pid::Int; nzone::Array{Int} = [1], dist::Array{Int} = [1])
         I[1] = pid%dist[1]
     end
     if dim >= 2
-        I[2] = Int( cld(pid%MK.product(dist[1:2]), dist[1]) )
+        I[2] = Int( cld(pid%prod(dist[1:2]), dist[1]) )
     end
     if dim >= 3
-        I[3] = Int( cld(pid, MK.product(dist[1:2])) )
+        I[3] = Int( cld(pid, prod(dist[1:2])) )
     end
     return Tuple([Int(nsize[k]*(I[k]-1)+1):Int(nsize[k]*I[k]) for k in 1:dim])    
 end

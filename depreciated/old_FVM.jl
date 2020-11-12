@@ -188,7 +188,7 @@ function check_conservativity!(f::Fluid)
     mass = 0.
     for c in f.cells
         if MK.betweeneq(c.x, f.point1, f.point2)
-            mass += c.rho * MK.product(f.d) 
+            mass += c.rho * prod(f.d) 
         end
     end
     if !f.total_is_summed
@@ -202,7 +202,7 @@ function check_mass!(f::Fluid; point1::Array{Float64} = f.point1, point2::Array{
     mass = 0.
     for c in f.cells
         if MK.betweeneq(c.x, point1, point2)
-            mass += c.rho * MK.product(f.d) 
+            mass += c.rho * prod(f.d) 
         end
     end
     if !f.total_is_summed
@@ -478,7 +478,7 @@ function correct_cell_w!(c::GCell, gamma)
 end
 
 function fill_fluid!(f::Fluid, cell::GCell)
-    f.cells = distribute(reshape([copy!(cell) for i in 1:MK.product(f.nmesh .+ f.ng*2)], Tuple(f.nmesh .+ f.ng*2)...), procs = workers(), dist = f.dist)
+    f.cells = distribute(reshape([copy!(cell) for i in 1:prod(f.nmesh .+ f.ng*2)], Tuple(f.nmesh .+ f.ng*2)...), procs = workers(), dist = f.dist)
     @sync for pid in workers()
         @spawnat pid begin
             inds = localindices(f.cells)
@@ -773,7 +773,7 @@ end
 
 function index_to_pid(k::Union{Array{Int}, CartesianIndex}; nzone::Array{Int} = [1], dist::Array{Int} = [1])
     K = cld.(Tuple(k), nzone ./ dist)
-    pid = workers()[Int(K[1] + [K[i] - 1 for i in 2:length(K)]' * [MK.product(dist[1:i]) for i in 1:length(K)-1])]
+    pid = workers()[Int(K[1] + [K[i] - 1 for i in 2:length(K)]' * [prod(dist[1:i]) for i in 1:length(K)-1])]
     return pid
 end
 
@@ -993,10 +993,10 @@ function pid_to_index(pid::Int; nzone::Array{Int} = [1], dist::Array{Int} = [1])
         I[1] = pid%dist[1]
     end
     if dim >= 2
-        I[2] = Int( cld(pid%MK.product(dist[1:2]), dist[1]) )
+        I[2] = Int( cld(pid%prod(dist[1:2]), dist[1]) )
     end
     if dim >= 3
-        I[3] = Int( cld(pid, MK.product(dist[1:2])) )
+        I[3] = Int( cld(pid, prod(dist[1:2])) )
     end
     return Tuple([Int(nsize[k]*(I[k]-1)+1):Int(nsize[k]*I[k]) for k in 1:dim])    
 end

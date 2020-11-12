@@ -63,7 +63,7 @@ mutable struct Fluid
     d::Array{T} where T <: Real# 各维度步长
     ng::Int 
     dist::Array{Int} # 各维度分区数向量
-    ndiv::Int # 分区总数 = MK.product(dist)
+    ndiv::Int # 分区总数 = prod(dist)
     # 单元
     cells::DArray{Cell,N,A} where N where A
     # 虚拟网格单元
@@ -94,7 +94,7 @@ function Fluid(dim::Int; point1::Array = [0.], point2::Array = [1.], nmesh::Arra
         error("(nmesh .+ ng * 2) must be divisible by dist.")
     end
     # println(typeof(Cell(1)))
-    Fluid(dim, point1, point2, nmesh, (point2 - point1) ./ nmesh, ng, dist, MK.product(dist),
+    Fluid(dim, point1, point2, nmesh, (point2 - point1) ./ nmesh, ng, dist, prod(dist),
     # 分布式矩阵
     distribute([Cell(dim)]), 
     # 虚拟网格单元

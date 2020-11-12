@@ -25,7 +25,7 @@ function after_shock(p1,ρ1,u1,Ms,γ,sdir)
 end
 
 function fill_fluid!(f::Fluid, cell::Cell)
-    f.cells = distribute(reshape([copy!(cell) for i in 1:MK.product(f.nmesh .+ f.ng*2)], Tuple(f.nmesh .+ f.ng*2)...), procs = workers(), dist = f.dist)
+    f.cells = distribute(reshape([copy!(cell) for i in 1:prod(f.nmesh .+ f.ng*2)], Tuple(f.nmesh .+ f.ng*2)...), procs = workers(), dist = f.dist)
     @sync for pid in workers()
         @spawnat pid begin
             inds = localindices(f.cells)

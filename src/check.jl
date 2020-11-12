@@ -45,7 +45,7 @@ function check_conservativity!(f::Fluid)
     mass = 0.
     for c in f.cells
         if MK.betweeneq(c.x, f.point1, f.point2)
-            mass += c.rho * MK.product(f.d) 
+            mass += c.rho * prod(f.d) 
         end
     end
     if !f.total_is_summed
@@ -59,7 +59,7 @@ function check_mass!(f::Fluid; point1::Array{Float64} = f.point1, point2::Array{
     mass = 0.
     for c in f.cells
         if MK.betweeneq(c.x, point1, point2)
-            mass += c.rho * MK.product(f.d) 
+            mass += c.rho * prod(f.d) 
         end
     end
     if !f.total_is_summed
