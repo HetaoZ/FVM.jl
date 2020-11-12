@@ -4,7 +4,7 @@ using PyPlot
 using DelimitedFiles, Printf, Distributed, DistributedArrays, LinearAlgebra, Statistics, WriteVTK
 using MathKits
 const MK = MathKits
-export Fluid, Cell, fill_fluid!, set_bounds!, after_shock, advance!, solve!
+export Fluid, Cell, fill_fluid!, set_bounds!, after_shock, advance!, solve!, save_to_vtk
 
 const OUTPUTDATA = true
 const AUSM_Kp = 0.25
@@ -32,6 +32,7 @@ include("solver.jl")
 include("deepcopy.jl")
 include("check.jl")
 include("io_post.jl")
+include("io_post_vtk.jl")
 
 
 ###########
