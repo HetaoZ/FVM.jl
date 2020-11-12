@@ -30,7 +30,7 @@ rho2, p2, u2 = after_shock(c1.p,c1.rho,c1.u[1],1.21,f.constants["gamma"],1)
 c2 = Cell(2, rho = rho2, u = [u2, 0.], p = p2)
 fill_fluid!(f, c2, [-10e-3, 0.], [0., 65e-3])
 
-fvm_set_bounds!!(f, ["free" "refl"; "refl" "refl"])
+set_bounds!!(f, ["free" "refl"; "refl" "refl"])
 
 f.exclude_particles = 1
 

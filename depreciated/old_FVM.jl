@@ -30,7 +30,7 @@ const RK_COEFF = [1.0 0.75 1/3;
 
 # 函数
 
-function fvm_advance!(f::Fluid, dt::Float64)
+function advance!(f::Fluid, dt::Float64)
     
     # println("-- advance_fluid: 1 --")
     # showfield!(f.cells, "rho", 13:20)
@@ -1118,7 +1118,7 @@ function solve!(f::Fluid; CFL::Float64 = 0.3, maxtime::Float64 = 1, maxframe::In
     end
     while time < maxtime && frame < maxframe
         dt = time_step!(f, CFL = CFL)
-        fvm_advance!(f, dt)
+        advance!(f, dt)
         time += dt
         frame += 1
         print("Current frame = ",frame,"\r")

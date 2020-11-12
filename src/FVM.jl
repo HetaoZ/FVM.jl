@@ -1,10 +1,10 @@
 
 module FVM
 using PyPlot 
-using DelimitedFiles, Printf, Distributed, DistributedArrays, LinearAlgebra, Statistics
+using DelimitedFiles, Printf, Distributed, DistributedArrays, LinearAlgebra, Statistics, WriteVTK
 using MathKits
 const MK = MathKits
-export Fluid, Cell, fill_fluid!, fvm_set_bounds!, after_shock, fvm_advance!, fvm_solve!
+export Fluid, Cell, fill_fluid!, set_bounds!, after_shock, advance!, solve!
 
 const OUTPUTDATA = true
 const AUSM_Kp = 0.25

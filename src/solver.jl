@@ -1,4 +1,4 @@
-function fvm_advance!(f::Fluid, dt::Float64)
+function advance!(f::Fluid, dt::Float64)
     
     # println("-- advance_fluid: 1 --")
     # showfield!(f.cells, "rho", 13:20)
@@ -35,7 +35,7 @@ function fvm_advance!(f::Fluid, dt::Float64)
 
 end
 
-function fvm_solve!(f::Fluid; CFL::Float64 = 0.3, maxtime::Float64 = 1, maxframe::Int = 1, cutframe::Int = 1, varname::String = "rho", axis::Int = 1, filepath::String = "../outputdata/", draw::Bool = false, figpath::String = "../outputfig/", plotdim::String = "2D", levels::Vector=[0,0,0])
+function solve!(f::Fluid; CFL::Float64 = 0.3, maxtime::Float64 = 1, maxframe::Int = 1, cutframe::Int = 1, varname::String = "rho", axis::Int = 1, filepath::String = "../outputdata/", draw::Bool = false, figpath::String = "../outputfig/", plotdim::String = "2D", levels::Vector=[0,0,0])
     time = 0.
     frame = 0
     dt = 0.
@@ -51,7 +51,7 @@ function fvm_solve!(f::Fluid; CFL::Float64 = 0.3, maxtime::Float64 = 1, maxframe
     end
     while time < maxtime && frame < maxframe
         dt = time_step!(f, CFL = CFL)
-        fvm_advance!(f, dt)
+        advance!(f, dt)
         time += dt
         frame += 1
         print("Current frame = ",frame,"\r")
