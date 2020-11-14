@@ -8,16 +8,16 @@ end
 
 function create_vtkfile(f, fname)
     if f.dim == 1
-        x = f.point1[1]-f.ng*f.d[1]:f.d[1]:f.point2[1]+f.ng*f.d[1]
+        x = f.point1[1]-(f.ng-0.5)*f.d[1]:f.d[1]:f.point2[1]+(f.ng-0.5)*f.d[1]
         file = vtk_grid(fname, x)
     elseif f.dim == 2
-        x = f.point1[1]-f.ng*f.d[1]:f.d[1]:f.point2[1]+f.ng*f.d[1]
-        y = f.point1[2]-f.ng*f.d[2]:f.d[2]:f.point2[2]+f.ng*f.d[2]
+        x = f.point1[1]-(f.ng-0.5)*f.d[1]:f.d[1]:f.point2[1]+(f.ng-0.5)*f.d[1]
+        y = f.point1[2]-(f.ng-0.5)*f.d[2]:f.d[2]:f.point2[2]+(f.ng-0.5)*f.d[2]
         file = vtk_grid(fname, x, y)
     else
-        x = f.point1[1]-f.ng*f.d[1]:f.d[1]:f.point2[1]+f.ng*f.d[1]
-        y = f.point1[2]-f.ng*f.d[2]:f.d[2]:f.point2[2]+f.ng*f.d[2]
-        z = f.point1[3]-f.ng*f.d[3]:f.d[3]:f.point2[3]+f.ng*f.d[3]
+        x = f.point1[1]-(f.ng-0.5)*f.d[1]:f.d[1]:f.point2[1]+(f.ng-0.5)*f.d[1]
+        y = f.point1[2]-(f.ng-0.5)*f.d[2]:f.d[2]:f.point2[2]+(f.ng-0.5)*f.d[2]
+        z = f.point1[3]-(f.ng-0.5)*f.d[3]:f.d[3]:f.point2[3]+(f.ng-0.5)*f.d[3]
         file = vtk_grid(fname, x, y, z)
     end
     return file
