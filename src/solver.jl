@@ -31,6 +31,8 @@ function advance!(f::Fluid, dt::Float64)
 
         # println("-- advance_fluid: 6 --")
         # showfield!(f.cells, "rho", 13:20)
+
+        
     end
 
 end
@@ -74,20 +76,33 @@ end
 """
 function time_step!(f::Fluid; CFL::Float64 = 0.1)
     smax = 0.
+    umax = 0.
+    svmax = 0.
     @sync for pid in workers()
-        smax = max(smax, @fetchfrom pid begin
+        smaxtmptmp, umaxtmptmp, svmaxtmptmp = @fetchfrom pid begin
             smaxtmp = 0.
+            umaxtmp = 0.
+            svmaxtmp = 0.
             for c in localpart(f.cells)
                 if c.rho == 0.
                     s = 0.
                 else
                     s = sound_speed(rho = c.rho, p = c.p, gamma = f.constants["gamma"])
                 end
+                svmaxtmp = max(svmaxtmp, s)
+                umaxtmp = maximum([umaxtmp, c.u[1], c.u[2]])
+                
                 smaxtmp = maximum([smaxtmp; s .+ map(abs, c.u)])
             end
-            smaxtmp
-        end)
+            smaxtmp, umaxtmp, svmaxtmp
+        end
+        smax = max(smax, smaxtmptmp)
+        svmax = max(svmax, svmaxtmptmp)
+        umax = max(umax, umaxtmptmp)
     end
+    println("umax = ",umax)
+    println("svmax = ",svmax)
+    println("smax = ",smax)
     dt = minimum(f.d) / smax * CFL
     if dt < TOL_STEP
         error( "Too small time step!")
@@ -102,7 +117,7 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
             for c in localpart(f.cells)
                 if MK.betweeneq(c.x, f.point1, f.point2)
             
-                    @. c.w = coeff[1] * c.w + coeff[2] * c.wb + coeff[3] * c.rhs * dt
+                    c.w = coeff[1] * c.w + coeff[2] * c.wb + coeff[3] * c.rhs * dt
 
 
                     # correct_cell_w!(c, f.constants["gamma"])
