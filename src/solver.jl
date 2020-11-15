@@ -76,33 +76,22 @@ end
 """
 function time_step!(f::Fluid; CFL::Float64 = 0.1)
     smax = 0.
-    umax = 0.
-    svmax = 0.
     @sync for pid in workers()
-        smaxtmptmp, umaxtmptmp, svmaxtmptmp = @fetchfrom pid begin
+        smaxtmptmp= @fetchfrom pid begin
             smaxtmp = 0.
-            umaxtmp = 0.
-            svmaxtmp = 0.
             for c in localpart(f.cells)
                 if c.rho == 0.
                     s = 0.
                 else
                     s = sound_speed(rho = c.rho, p = c.p, gamma = f.constants["gamma"])
                 end
-                svmaxtmp = max(svmaxtmp, s)
-                umaxtmp = maximum([umaxtmp, c.u[1], c.u[2]])
                 
                 smaxtmp = maximum([smaxtmp; s .+ map(abs, c.u)])
             end
-            smaxtmp, umaxtmp, svmaxtmp
+            smaxtmp
         end
         smax = max(smax, smaxtmptmp)
-        svmax = max(svmax, svmaxtmptmp)
-        umax = max(umax, umaxtmptmp)
     end
-    println("umax = ",umax)
-    println("svmax = ",svmax)
-    println("smax = ",smax)
     dt = minimum(f.d) / smax * CFL
     if dt < TOL_STEP
         error( "Too small time step!")
