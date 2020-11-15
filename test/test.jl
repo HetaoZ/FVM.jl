@@ -1,6 +1,6 @@
 
 
-nw = 1
+nw = 4
 
 using Distributed
 addprocs(nw - nprocs() + 1)
@@ -21,7 +21,7 @@ println("Modules were loaded successfully.")
 f = Fluid(2, 
             point1 = [-10e-3,-10e-3], 
             point2 = [20e-3, 65e-3], 
-            nmesh = Int[30, 75] .* 1, 
+            nmesh = Int[30, 75] .* 4, 
             ng = 4, 
             dist = [nw, 1]
             )  
