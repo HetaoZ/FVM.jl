@@ -130,6 +130,7 @@ function update_rhs!(f::Fluid)
                         ci = copy(c.i)
     
                         for j in 1:5
+                            println(size(f.cells))
                             sw = f.cells[ci[1]+j-3].w
                             for i = 1:2+f.dim
                                 ws[i,j] = sw[i]
