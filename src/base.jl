@@ -66,8 +66,6 @@ mutable struct Fluid
     ndiv::Int # 分区总数 = prod(dist)
     # 单元
     cells::DArray{Cell,N,A} where N where A
-    # 虚拟网格单元
-    ghost_cells::Dict{Tuple, Cell}
     # 粒子
     particles::Array{Particle}
     # 边界类型
@@ -97,8 +95,6 @@ function Fluid(dim::Int; point1::Array = [0.], point2::Array = [1.], nmesh::Arra
     Fluid(dim, point1, point2, nmesh, (point2 - point1) ./ nmesh, ng, dist, prod(dist),
     # 分布式矩阵
     distribute([Cell(dim)]), 
-    # 虚拟网格单元
-    Dict(),
     # 粒子
     Particle[],
     # 边界

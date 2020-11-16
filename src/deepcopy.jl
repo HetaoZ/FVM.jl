@@ -22,8 +22,25 @@ function testbackup_w!(f::Fluid)
 end
 
 function Base.copy!(f::Fluid)
-    f1 = deepcopy(f)
-    f1.cells = deepcopy(f.cells)
+    f1 = Fluid(f.dim)
+    f1.point1 = copy(f.point1)
+    f1.point2 = copy(f.point2)
+    f1.nmesh = copy(f.nmesh)
+    f1.d = copy(f.d)
+    f1.ng = copy(f.ng)
+    f1.dist = copy(f.dist)
+    f1.ndiv = copy(f.ndiv)
+    f1.cells = copy!(f.cells, f.ndiv, f.dist)
+    f1.particles = copy!(f.particles)
+    f1.boundaries = copy(f.boundaries)
+    f1.constants = f.constants
+    f1.background_is_filled = f.background_is_filled
+    f1.total_mass = f.total_mass
+    f1.total_is_summed = f.total_is_summed
+    f1.consider_vis_item = f.consider_vis_item
+    f1.exclude_particles = f.exclude_particles
+    f1.reconst_scheme = f.reconst_scheme
+    f1.flux_scheme = f.flux_scheme
     return f1
 end
 
