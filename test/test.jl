@@ -36,7 +36,7 @@ rho2, p2, u2 = after_shock(c1.p,c1.rho,c1.u[1],1.21,f.constants["gamma"],1)
 c2 = Cell(2, rho = rho2, u = [u2, 0.], p = p2)
 fill_fluid!(f, c2, [-10e-3, 0.], [0., 65e-3])
 
-@everywhere function clear_cell!(c::Cell)
+function clear_cell!(c::Cell)
     r = 0.0
     c.rho = c.rho*r
     c.u = zeros(Float64, size(c.u))
