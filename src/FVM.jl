@@ -2,7 +2,7 @@
 module FVM
 using PyPlot 
 using DelimitedFiles, Printf, Distributed, LinearAlgebra, Statistics, WriteVTK
-@everywhere using DistributedArrays
+using DistributedArrays
 using MathKits
 const MK = MathKits
 export Fluid, Cell, fill_fluid!, set_bounds!, after_shock, advance!, solve!, save_to_vtk, save_mesh, save_to_txt, save_to_fig
