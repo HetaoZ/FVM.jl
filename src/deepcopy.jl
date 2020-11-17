@@ -21,7 +21,7 @@ function testbackup_w!(f::Fluid)
     end   
 end
 
-function Base.copy!(f::Fluid)
+function copyfluid!(f::Fluid)
     f1 = Fluid(f.dim)
     f1.point1 = copy(f.point1)
     f1.point2 = copy(f.point2)
@@ -31,42 +31,15 @@ function Base.copy!(f::Fluid)
     f1.dist = copy(f.dist)
     f1.ndiv = copy(f.ndiv)
     f1.cells = copy!(f.cells, f.ndiv, f.dist)
-    f1.particles = copy!(f.particles)
     f1.boundaries = copy(f.boundaries)
     f1.constants = f.constants
     f1.background_is_filled = f.background_is_filled
     f1.total_mass = f.total_mass
     f1.total_is_summed = f.total_is_summed
     f1.consider_vis_item = f.consider_vis_item
-    f1.exclude_particles = f.exclude_particles
     f1.reconst_scheme = f.reconst_scheme
     f1.flux_scheme = f.flux_scheme
     return f1
-end
-
-function Base.copy!(particles::Array{Particle})
-    ps = Array{Particle}(undef, size(particles))
-    for k in eachindex(particles)
-        ps[k] = copy!(particles[k])
-    end
-    return ps
-end
-
-function Base.copy!(particle::Particle)
-    p = Particle(particle.dim)
-    p.m = particle.m
-    p.u = copy(particle.u)
-    p.ek = particle.ek
-    p.e = particle.e
-    p.E = particle.E
-    p.x = copy(particle.x)
-    p.dx = copy(particle.dx)
-    p.V  = particle.V
-    p.r  = particle.r
-    p.force_to_boundary = copy(particle.force_to_boundary)
-    p.boundary_id = particle.boundary_id
-    p.boundary_ratio = particle.boundary_ratio
-    return p
 end
 
 function Base.copy!(c::Cell) 

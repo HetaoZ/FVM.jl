@@ -5,7 +5,7 @@ using DelimitedFiles, Printf, Distributed, LinearAlgebra, Statistics, WriteVTK
 using DistributedArrays
 using MathKits
 const MK = MathKits
-export Fluid, Cell, fill_fluid!, set_bounds!, after_shock, advance!, solve!, save_to_vtk, save_mesh, save_to_txt, save_to_fig
+export Fluid, Cell, fill_fluid!, set_bounds!, after_shock, advance!, solve!, save_to_vtk, save_mesh, save_to_txt, save_to_fig, copyfluid!, clear_fluid_in_box!
 
 const OUTPUTDATA = true
 const AUSM_Kp = 0.25

@@ -63,3 +63,22 @@ function fill_fluid!(f::Fluid, cell::Cell, point1::Array, point2::Array)
     
 end
 
+function clear_cell!(c::Cell)
+    r = 0.0
+    c.rho = c.rho*r
+    c.u = zeros(Float64, size(c.u))
+    c.e = c.e
+    c.p = c.p*r
+    c.w = [c.rho, 0, 0, c.rho*c.e]
+end
+function clear_fluid_in_box!(f, point1, point2)
+    @sync for pid in workers()
+        @spawnat pid begin
+            for c in localpart(f.cells)
+                if MathKits.between(c.x, point1, point2)
+                    clear_cell!(c) 
+                end
+            end
+        end
+    end
+end

@@ -23,22 +23,6 @@ function check_all_cells_status!(f::Fluid)
     end
 end
 
-function check_all_cells_particles_status!(f::Fluid)
-    check_all_cells_status!(f.cells)
-    check_all_particles_status!(f.particles)
-end
-
-function check_all_particles_status!(particles::Array{Particle})
-    for p in particles
-        check_particle_status!(p)
-    end
-end
-
-function check_all_particles_status!(f::Fluid)
-    for p in f.particles
-        check_particle_status!(p)
-    end
-end
 
 function check_conservativity!(f::Fluid)
     @warn "This may take much time!"
@@ -68,33 +52,6 @@ function check_mass!(f::Fluid; point1::Array{Float64} = f.point1, point2::Array{
     end
     
     return mass
-end
-
-function check_mass!(particles::Array{Particle})
-    mass = 0.
-    for p in particles
-        mass += p.m
-    end
-    return mass
-end
-
-function check_particle_status!(p::Particle)
-    nan = false
-    if isnan(sum(p.m)) || isnan(sum(p.mu)) || isnan(sum(p.mE))
-        nan = true
-    end
-    if isnan(sum(p.x)) || isnan(sum(p.dx)) || isnan(sum(p.force_to_boundary))
-        nan = true
-    end
-    if isnan(sum(p.boundary_id)) || isnan(sum(p.boundary_ratio))
-        nan = true
-    end
-
-    if nan
-        println("-- p is NaN --")
-        display(p)
-        error("NaN error")
-    end    
 end
 
 """

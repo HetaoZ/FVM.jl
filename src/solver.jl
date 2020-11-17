@@ -119,10 +119,6 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
 end
 
 function update_rhs!(f::Fluid)
-    println("--update_rhs: 1--")
-    println(myid())
-    println(size(f.cells))
-    println(f.cells[65,5])
     if f.dim == 1
         @sync for pid in workers()
             @spawnat pid begin
@@ -157,10 +153,7 @@ function update_rhs!(f::Fluid)
                         ci = copy(c.i)
     
                         for j in 1:5
-                            # println("before", size(f.cells),"  ",ci,"  ",j)
                             sw = f.cells[ci[1]+j-3,ci[2]].w
-                            # println("after ",size(f.cells),"  ",ci,"  ",j)
-
                             for i = 1:4
                                 ws[i,j] = sw[i]
                             end

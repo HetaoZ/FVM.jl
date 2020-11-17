@@ -1,19 +1,4 @@
-mutable struct Particle
-    dim::Int
-    m::Float64 # 质量
-    u::Array{Float64} # 动量
-    ek::Float64 # 动能
-    e::Float64 # 内能
-    E::Float64 # 总能
-    x::Array{Float64} # 坐标
-    dx::Array{Float64} # 运动矢量
-    V::Float64 # volume
-    r::Float64 # radius
-    force_to_boundary::Array{Float64} # 对边界的力
-    boundary_id::Int # 力所在的边界编号
-    boundary_ratio::Float64 # 力的作用点在boundary上的比例（左/全）
-end
-Particle(dim::Int) = Particle(dim, 0., zeros(Float64,dim), 0., 0., 0., zeros(Float64,dim), zeros(Float64,dim), 0., 0., zeros(Float64,dim), 0, 0.)
+
 
 mutable struct Cell 
     # 物理量
@@ -66,8 +51,6 @@ mutable struct Fluid
     ndiv::Int # 分区总数 = prod(dist)
     # 单元
     cells::DArray{Cell,N,A} where N where A
-    # 粒子
-    particles::Array{Particle}
     # 边界类型
     boundaries::Array{String}
     # 可以像C++一样放一个成员函数在这里，但没必要。
@@ -79,7 +62,6 @@ mutable struct Fluid
     total_mass::Float64
     total_is_summed::Bool
     consider_vis_item::Bool
-    exclude_particles::Bool
     reconst_scheme::String
     flux_scheme::String
 end
@@ -95,8 +77,6 @@ function Fluid(dim::Int; point1::Array = [0.], point2::Array = [1.], nmesh::Arra
     Fluid(dim, point1, point2, nmesh, (point2 - point1) ./ nmesh, ng, dist, prod(dist),
     # 分布式矩阵
     distribute([Cell(dim)]), 
-    # 粒子
-    Particle[],
     # 边界
     Array{String}(undef, dim, 2),
     # 常数
@@ -107,7 +87,7 @@ function Fluid(dim::Int; point1::Array = [0.], point2::Array = [1.], nmesh::Arra
     "U0"=>1 # 特征速度
     ),
     # 辅助变量
-    false, 0., false, false, true,
+    false, 0., false, false,
     "MUSCL", "AUSM"
     )
 end
