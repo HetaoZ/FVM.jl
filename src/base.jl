@@ -70,9 +70,9 @@ end
 创建一个流场。
 """
 function Fluid(dim::Int; point1::Array = [0.], point2::Array = [1.], nmesh::Array = [1], ng::Int = 1, dist::Array = [1], constants::Dict = Dict())
-    if (nmesh .+ ng*2) .% dist != zeros(Int, length(nmesh))
-        error("(nmesh .+ ng * 2) must be divisible by dist.")
-    end
+    # if (nmesh .+ ng*2) .% dist != zeros(Int, length(nmesh))
+    #     error("(nmesh .+ ng * 2) must be divisible by dist.")
+    # end
     # println(typeof(Cell(1)))
     Fluid(dim, point1, point2, nmesh, (point2 - point1) ./ nmesh, ng, dist, prod(dist),
     # 分布式矩阵
