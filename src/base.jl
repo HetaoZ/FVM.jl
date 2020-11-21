@@ -27,14 +27,6 @@ function Cell(dim::Int; rho::T = 1.0, u::Array{T} = zeros(Float64,dim), p::T = 1
     zeros(Int,dim), zeros(Float64,dim))  
 end
 
-function clear_cell!(c::Cell)
-    c.rho = 0.
-    c.u = zeros(Float64, size(c.u))
-    c.e = 0.
-    c.p = 0.
-    c.w = zeros(Float64, size(c.w))
-end
-
 """
 流场
 """
