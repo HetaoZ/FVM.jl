@@ -38,3 +38,11 @@ function fetch_data(f, field)
     end
     return a
 end
+
+function save_fluid_mesh(f::Fluid, filepath)
+    for k in 1:f.dim
+        open(filepath*"fluid_x"*string(k)*".txt","w") do file
+            writedlm(file, [f.d[k]*(i-0.5-f.ng)+f.point1[k]  for  i=1:f.nmesh[k]+f.ng*2])
+        end
+    end    
+end
