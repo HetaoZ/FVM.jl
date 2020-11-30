@@ -1,6 +1,5 @@
 
 module FVM
-using PyPlot 
 using DelimitedFiles, Printf, Distributed, LinearAlgebra, Statistics, WriteVTK
 using DistributedArrays
 using MathKits
@@ -32,9 +31,9 @@ include("source.jl")
 include("solver.jl")
 include("deepcopy.jl")
 include("check.jl")
-include("io_post.jl")
+# include("io_post.jl")
 include("io_post_vtk.jl")
-include("io_post_txt.jl")
+# include("io_post_txt.jl")
 
 ###
 end
