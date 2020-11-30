@@ -48,14 +48,7 @@ mutable struct Fluid
     # 可以像C++一样放一个成员函数在这里，但没必要。
     # solver::Function
     # 常数
-    constants::Dict
-    # 辅助变量
-    background_is_filled::Bool
-    total_mass::Float64
-    total_is_summed::Bool
-    consider_vis_item::Bool
-    reconst_scheme::String
-    flux_scheme::String
+    para::Dict
 end
 
 """
@@ -76,12 +69,14 @@ function Fluid(dim::Int; point1::Array = [0.], point2::Array = [1.], nmesh::Arra
     "mu"=>1.e-6, # 动力粘性系数
     "Pr"=>1.0, # 热传导系数
     "L0"=>1, # 特征长度
-    "U0"=>1 # 特征速度
-    ),
-    # 辅助变量
-    false, 0., false, false,
-    "MUSCL", "AUSM"
-    )
+    "U0"=>1, # 特征速度
+    "background_is_filled"=>false, 
+    "total_mass"=>0., 
+    "total_is_summed"=>false, 
+    "consider_vis_item"=>false,
+    "reconst_scheme"=>"MUSCL", 
+    "flux_scheme"=>"AUSM"
+    ))
 end
 
 

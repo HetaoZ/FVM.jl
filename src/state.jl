@@ -52,8 +52,8 @@ function temperature(c::Cell, gamma::Float64)
     return s^2
 end
 
-function reynolds_number(rho::Float64, constants::Dict)
-    return rho * constants["U0"] * constants["L0"] / constants["mu"]
+function reynolds_number(rho::Float64, para::Dict)
+    return rho * para["U0"] * para["L0"] / para["mu"]
 end
 
 function w2states!(c::Cell, gamma::Float64)

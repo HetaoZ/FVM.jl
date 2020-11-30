@@ -83,7 +83,7 @@ function time_step!(f::Fluid; CFL::Float64 = 0.1)
                 if c.rho == 0.
                     s = 0.
                 else
-                    s = sound_speed(rho = c.rho, p = c.p, gamma = f.constants["gamma"])
+                    s = sound_speed(rho = c.rho, p = c.p, gamma = f.para["gamma"])
                 end
                 
                 smaxtmp = maximum([smaxtmp; s .+ map(abs, c.u)])
@@ -109,8 +109,8 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
                     c.w = coeff[1] * c.w + coeff[2] * c.wb + coeff[3] * c.rhs * dt
 
 
-                    # correct_cell_w!(c, f.constants["gamma"])
-                    w2states!(c, f.constants["gamma"])  
+                    # correct_cell_w!(c, f.para["gamma"])
+                    w2states!(c, f.para["gamma"])  
 
                 end
             end
@@ -136,7 +136,7 @@ function update_rhs!(f::Fluid)
                             end
                         end    
     
-                        c.rhs += get_dflux!(f.reconst_scheme, ws, f.constants, 1) / f.d[1] 
+                        c.rhs += get_dflux!(f.para["reconst_scheme"], ws, f.para, 1) / f.d[1] 
                                          
                     end
                 end
@@ -159,7 +159,7 @@ function update_rhs!(f::Fluid)
                             end
                         end    
     
-                        c.rhs += get_dflux!(f.reconst_scheme, ws, f.constants, 1) / f.d[1] 
+                        c.rhs += get_dflux!(f.para["reconst_scheme"], ws, f.para, 1) / f.d[1] 
                         
     
                         for j in 1:5
@@ -169,7 +169,7 @@ function update_rhs!(f::Fluid)
                             end
                         end    
     
-                        c.rhs += get_dflux!(f.reconst_scheme, ws, f.constants, 2) / f.d[2]                    
+                        c.rhs += get_dflux!(f.para["reconst_scheme"], ws, f.para, 2) / f.d[2]                    
                     end
                 end
             end
@@ -197,7 +197,7 @@ end
 #                             ws[:,k] = f.cells[Tuple(i)...].w
 #                         end 
                         
-#                         c.rhs += (get_flux!(f.reconst_scheme, ws[:,1:4], f.constants, axis = axis) - get_flux!(f.reconst_scheme, ws[:,2:5], f.constants, axis = axis)) / f.d[axis]
+#                         c.rhs += (get_flux!(f.para["reconst_scheme"], ws[:,1:4], f.para, axis = axis) - get_flux!(f.para["reconst_scheme"], ws[:,2:5], f.para, axis = axis)) / f.d[axis]
 #                     end                       
                     
 #                 end

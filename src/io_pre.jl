@@ -39,11 +39,11 @@ function fill_fluid!(f::Fluid, cell::Cell)
             end
         end
     end
-    f.background_is_filled = true  
+    f.para["background_is_filled"] = true  
 end
 
 function fill_fluid!(f::Fluid, cell::Cell, point1::Array, point2::Array)
-    if !f.background_is_filled
+    if !f.para["background_is_filled"]
         error("Please fill the background before this calling.")
     else
         @sync for pid in workers()

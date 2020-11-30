@@ -32,11 +32,11 @@ function check_conservativity!(f::Fluid)
             mass += c.rho * prod(f.d) 
         end
     end
-    if !f.total_is_summed
-        f.total_mass = mass
-        f.total_is_summed = true
+    if !f.para["total_is_summed"]
+        f.para["total_mass"] = mass
+        f.para["total_is_summed"] = true
     end
-    println("-- [ mass = ", mass, " | δ = ", (mass-f.total_mass)/f.total_mass, " ] --")    
+    println("-- [ mass = ", mass, " | δ = ", (mass-f.para["total_mass"])/f.para["total_mass"], " ] --")    
 end
 
 function check_mass!(f::Fluid; point1::Array{Float64} = f.point1, point2::Array{Float64} = f.point2)
@@ -46,9 +46,9 @@ function check_mass!(f::Fluid; point1::Array{Float64} = f.point1, point2::Array{
             mass += c.rho * prod(f.d) 
         end
     end
-    if !f.total_is_summed
-        f.total_mass = mass
-        f.total_is_summed = true
+    if !f.para["total_is_summed"]
+        f.para["total_mass"] = mass
+        f.para["total_is_summed"] = true
     end
     
     return mass

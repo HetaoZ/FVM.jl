@@ -32,13 +32,7 @@ function copyfluid!(f::Fluid)
     f1.ndiv = copy(f.ndiv)
     f1.cells = copy!(f.cells, f.ndiv, f.dist)
     f1.boundaries = copy(f.boundaries)
-    f1.constants = f.constants
-    f1.background_is_filled = f.background_is_filled
-    f1.total_mass = f.total_mass
-    f1.total_is_summed = f.total_is_summed
-    f1.consider_vis_item = f.consider_vis_item
-    f1.reconst_scheme = f.reconst_scheme
-    f1.flux_scheme = f.flux_scheme
+    f1.para = f.para
     return f1
 end
 

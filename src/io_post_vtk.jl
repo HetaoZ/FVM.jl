@@ -23,25 +23,9 @@ function create_vtkfile(f, fname)
     return file
 end
 
-function fetch_data(f, field)
-    datadim = length(getfield(f.cells[1], field))
-    if datadim == 1
-        a = Array{typeof(getfield(f.cells[1], field))}(undef, size(f.cells))
-        for i in eachindex(f.cells)
-            a[i] = getfield(f.cells[i], field)
-        end
-    else
-        a = Array{eltype(getfield(f.cells[1], field))}(undef, datadim, size(f.cells))
-        for i in eachindex(f.cells)
-            a[:, i] = getfield(f.cells[i], field)
-        end
-    end
-    return a
-end
-
-function save_fluid_mesh(f::Fluid, filepath)
+function save_fluid_mesh(f::Fluid, fname)
     for k in 1:f.dim
-        open(filepath*"fluid_x"*string(k)*".txt","w") do file
+        open(fname*"_"*string(k)*".txt","w") do file
             writedlm(file, [f.d[k]*(i-0.5-f.ng)+f.point1[k]  for  i=1:f.nmesh[k]+f.ng*2])
         end
     end    

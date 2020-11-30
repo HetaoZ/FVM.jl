@@ -4,13 +4,13 @@ get_sxy(hy::Float64, u::Vector{Float64}, hx::Float64, v::Vector{Float64}, mu::Fl
 
 get_syy(hx::Float64, u::Vector{Float64}, hy::Float64, v::Vector{Float64}, mu::Float64) = 2/3*mu*(- (u[3] - u[1])/(2*hx) + 2*(v[3] - v[1])/(2*hy))
 
-function get_vis_item!(u::Array{Float64}, v::Array{Float64}, T::Array{Float64}, constants::Dict, d::Vector, rho::Float64)
+function get_vis_item!(u::Array{Float64}, v::Array{Float64}, T::Array{Float64}, para::Dict, d::Vector, rho::Float64)
     if rho == 0.0
         return zeros(Float64, length(d) + 2)
     end
-    Re = reynolds_number(rho, constants)
-    mu = constants["mu"]
-    beta = - mu/(constants["Pr"]*(constants["gamma"]-1.0))
+    Re = reynolds_number(rho, para)
+    mu = para["mu"]
+    beta = - mu/(para["Pr"]*(para["gamma"]-1.0))
     if length(d) == 2
         hx, hy = d[1], d[2]
 

@@ -25,13 +25,13 @@ f = Fluid(2,
             ng = 4, 
             dist = [nw, 1]
             )  
-f.constants["gamma"] = 1.4
-f.consider_vis_item = false
+f.para["gamma"] = 1.4
+f.para["consider_vis_item"] = false
 
 c1 = Cell(2, rho = 1., u = [0., 0.], p = 1.)
 fill_fluid!(f, c1)
 
-rho2, p2, u2 = after_shock(c1.p,c1.rho,c1.u[1],1.21,f.constants["gamma"],1)
+rho2, p2, u2 = after_shock(c1.p,c1.rho,c1.u[1],1.21,f.para["gamma"],1)
 
 c2 = Cell(2, rho = rho2, u = [u2, 0.], p = p2)
 fill_fluid!(f, c2, [-10e-3, 0.], [0., 65e-3])
@@ -40,8 +40,10 @@ clear_fluid_in_box!(f, [0, 0], [5e-3, 50e-3])
 
 FVM.set_bounds!(f, ["free" "refl"; "refl" "refl"])
 
-f.flux_scheme = "LF"
+f.para["flux_scheme"] = "LF"
 
+review(f)
+save_review(f, "out/review")
 
 # --------------------------------
 # solve

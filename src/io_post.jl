@@ -1,180 +1,71 @@
-function meshxy(x::Array, y::Array; dim::Int = 1)
-    m=maximum(size(x))
-    n=maximum(size(y))
-    X=Array{Float64}(undef,m,n)
-    Y=Array{Float64}(undef,m,n)
-    for i=1:m,j=1:n
-        X[i,j]=x[i]
-        Y[i,j]=y[j]
+function review(f::Fluid)
+    println("-- short summary of Fluid --")
+    println("# parameters")
+    for k in keys(f.para)
+        println("  ",k," : ",f.para[k])
     end
-    if dim == 1
-        return reshape(X,m*n,1),reshape(Y,m*n,1)
-    elseif dim == 2
-        return X,Y
-    else
-        error( "The dimension must be <= 2")
+    println("# mesh")
+    println("  dimension : ", f.dim)
+    println("  domain : ", Tuple(f.point1)," -> ", Tuple(f.point2))
+    println("  number of cells : ", length(f.cells))
+    println("  size of cells : ", size(f.cells))
+    println("# distribution")
+    showdist!(f.cells)
+    println("# boundaries")
+    for k = 1:f.dim
+        println("  axis "*string(k)*" : ", (f.boundaries[k,1], f.boundaries[k,2]))
+    end
+    println("# states")
+    rho = fetch_data(f, :rho)
+    p = fetch_data(f, :p)
+    u = fetch_data(f, :u)
+    println("  rho : ", [minimum(rho), maximum(rho)])
+    println("  p : ", [minimum(p), maximum(p)])
+    println("  u : ", [minimum(u), maximum(u)])
+    println()
+end
+
+function save_review(f, fname)
+    open(fname*".txt", "w") do file
+        write(file,"-- short summary of Fluid --")
+        write(file,"# parameters")
+        for k in keys(f.para)
+            write(file,"  "*string(k)*" : "*string(f.para[k]))
+        end
+        write(file,"# mesh")
+        write(file,"  dimension : "*string(f.dim))
+        write(file,"  domain : "*string(Tuple(f.point1))*" -> "*string(Tuple(f.point2)))
+        write(file,"  number of cells : "*string(length(f.cells)))
+        write(file,"  size of cells : "*string(size(f.cells)))
+        write(file,"# distribution")
+        write(file, nworkers())
+        write(file,"# boundaries")
+        for k = 1:f.dim
+            write(file,"  axis "*string(k)*" : "*string((f.boundaries[k,1], f.boundaries[k,2])))
+        end
+        write(file,"# states")
+        rho = fetch_data(f, :rho)
+        p = fetch_data(f, :p)
+        u = fetch_data(f, :u)
+        write(file,"  rho : "*string([minimum(rho), maximum(rho)]))
+        write(file,"  p : "*string([minimum(p), maximum(p)]))
+        write(file,"  u : "*string([minimum(u), maximum(u)]))
+        write(file,"")
     end
 end
 
-function read_frame(n::Int; varname::String = "rho", filepath::String = "../outputdata/")
-    var = readdlm(filepath*"fluid_"*varname*"_"*string(n+FRAME_BASE)*".txt")
-    return var
-end
-
-function read_mesh(dim::Int, n::Int; varname::String = "rho", filepath::String = "../outputdata/")
-    return Tuple([readdlm(filepath*"fluid_x"*string(k)*".txt") for k in 1:dim])
-end
-
-function output!(frame::Int, time::Float64; filepath::String = "../outputdata/")
-    if frame == 0
-        open(filepath*"time.txt","w") do f
-            writedlm(f,Union{Float64,Int}[frame time])
+function fetch_data(f, field)
+    datadim = length(getfield(f.cells[1], field))
+    if datadim == 1
+        a = Array{typeof(getfield(f.cells[1], field))}(undef, size(f.cells))
+        for i in eachindex(f.cells)
+            a[i] = getfield(f.cells[i], field)
         end
     else
-        open(filepath*"time.txt","a") do f
-            writedlm(f,Union{Float64,Int}[frame time])
+        a = Array{eltype(getfield(f.cells[1], field))}(undef, datadim, size(f.cells)...)
+        for i in eachindex(f.cells)
+            a[:, i] = getfield(f.cells[i], field)
         end
     end
-end
-
-"""
-axis表示输出变量的方向。
-"""
-function output!(f::Fluid; varname::String = "rho", axis::Int = 1, frame::Int = 1, filepath::String = "../outputdata/")
-    if varname == "mesh"
-        for k in 1:f.dim
-            open(filepath*"fluid_x"*string(k)*".txt","w") do file
-                writedlm(file, [f.d[k]*(i-0.5-f.ng)+f.point1[k]  for  i=1:f.nmesh[k]+f.ng*2])
-            end
-        end        
-
-    else
-        # essential vars
-        for essential_varname in ("rho", "p")
-            data = Array{typeof(getfield(f.cells[1],Symbol(essential_varname)))}(undef, Tuple(f.nmesh .+ 2 * f.ng ))
-            for k in eachindex(f.cells)
-                data[k] = getfield(f.cells[k],Symbol(essential_varname))
-            end      
-            open(filepath*"fluid_"*essential_varname*"_"*string(frame+FRAME_BASE)*".txt","w") do file
-                writedlm(file, data)
-            end           
-        end           
-        # reviewed vars
-        if varname in ("e",)
-            data = Array{typeof(getfield(f.cells[1],Symbol(varname)))}(undef, Tuple(f.nmesh .+ 2 * f.ng ))
-            for k in eachindex(f.cells)
-                data[k] = getfield(f.cells[k],Symbol(varname))
-            end
-        end
-        if varname == "u"
-            data = Array{Float64}(undef, Tuple(f.nmesh .+  2 * f.ng ))
-            for k in eachindex(f.cells)
-                data[k] = f.cells[k].u[axis]
-            end      
-            open(filepath*"fluid_"*varname*"_"*string(frame+FRAME_BASE)*".txt","w") do file
-                writedlm(file, data)
-            end      
-        end
-
-    end
-end
-
-function output_plot_func(x::Array{Float64}, data::Array{Float64}; levels::Vector = [0, 1, 1])
-    figure(1, figsize=(8, 6))
-    c = plot(x, data)
-
-    # ref
-    A = readdlm("../../../CommonData/monasse2012-piston-p.txt")
-    plot(A[:,1], A[:,2], color = "r")
-    
-    ylim(levels[1], levels[2])
-end
-
-function output_plot_func(x::Array{Float64}, y::Array{Float64}, data::Array{Float64}; levels::Vector = [0, 1, 1], cmap::String = "jet", cbar::Bool = true)
-    scale = FIGHEIGHT / (y[end] - y[1])
-    figure(1, figsize=((x[end] - x[1]) * scale + 4 * cbar, FIGHEIGHT))
-    X, Y = meshxy(x, y, dim = 2)
-    if levels[2] <= levels[1] || levels[3] < 2
-        levels = (minimum(data), maximum(data), 30)
-    end
-    c = contourf(X, Y, data, levels=LinRange(Tuple(levels)...), cmap=cmap);
-    c1 = contour(X, Y, data, levels=LinRange(Tuple(levels)...));
-    # c2 = scatter(meshxy(x, y, dim = 1)..., marker = "+");
-    xlim([x[3], x[end-2]]); ylim([y[3], y[end-2]])
-    if cbar 
-        colorbar(c)
-    end
-end
-
-function outputfig(frame::Int; varname::String = "rho", filepath::String = "outputdata/", figpath::String = "outputfig/",  levels::Vector = [0, 1, 1], cmap::String = "jet", cbar::Bool = true, plotdim::String = "2D")
-    if plotdim == "1D"
-        x = read_mesh(1, frame, varname = varname, filepath = filepath)
-        data = read_frame(frame, varname = varname, filepath = filepath)
-        ioff()
-        output_plot_func(x[1], data, levels=levels)
-    elseif plotdim in ("2D", "2D-x", "2D-y")
-        x, y = read_mesh(2, frame, varname = varname, filepath = filepath)
-        data = read_frame(frame, varname = varname, filepath = filepath)
-        ioff()
-        if plotdim == "2D-x"
-            output_plot_func(x, data[:, floor(Int, size(data, 2)/2)], levels=levels)
-        elseif plotdim == "2D-y"
-            output_plot_func(y, data[floor(Int, size(data, 1)/2), :], levels=levels)  
-        else
-            output_plot_func(x, y, data, levels = levels, cmap = cmap, cbar = cbar)    
-        end 
-    else
-        error("undef dim")       
-    end
-    savefig(figpath*varname*"_"*string(frame+FRAME_BASE)*".png",dpi=100)
-    close(1)
-end
-
-function outputfig(frames::AbstractRange; varname::String = "rho", filepath::String = "outputdata/", figpath::String = "outputfig/",  levels::Array = [0, 0, 0], cmap::String = "jet", cbar::Bool = true, plotdim::String = "2D")
-    for frame in frames
-        outputfig(frame, varname = varname, filepath = filepath, figpath = figpath, levels = levels, cmap = cmap, cbar = cbar, plotdim = plotdim)
-    end
-end
-
-"""
-从内存中读取远比硬盘快。但也需要写一个从硬盘读取并绘图的函数。
-"""
-function outputfig!(f::Fluid; varname::String = "rho", axis::Int = 1, frame::Int = 1, figpath::String = "../outputfig/", plotdim::String = "2D", levels::Vector=[0,1,1])
-    if plotdim in ("2D", "2D-x", "2D-y")
-        x = [f.d[1]*(i-0.5-f.ng)+f.point1[1]  for  i=1:f.nmesh[1]+f.ng*2]
-        y = [f.d[2]*(i-0.5-f.ng)+f.point1[2]  for  i=1:f.nmesh[2]+f.ng*2]
-        if varname in ("rho","p","e")
-            data = Array{Float64}(undef, Tuple(f.nmesh .+  2 * f.ng ))
-            for k in eachindex(f.cells)
-                data[k] = getfield(f.cells[k], Symbol(varname))
-            end
-        elseif varname == "u"
-            data = Array{Float64}(undef, Tuple(f.nmesh .+  2 * f.ng ))
-            for k in eachindex(f.cells)
-                data[k] = f.cells[k].u[axis]
-            end  
-        else
-            error("undef varname")          
-        end  
-        ioff()
-        if plotdim == "2D-x"
-            output_plot_func(x, data[:, floor(Int, size(data, 2)/2)], levels=levels)
-        elseif plotdim == "2D-y"
-            output_plot_func(y, data[floor(Int, size(data, 1)/2), :], levels=levels)  
-        else        
-            output_plot_func(x, y, data, levels =levels)
-        end
-    elseif plotdim == "1D"
-        x = [f.d[1]*(i-0.5-f.ng)+f.point1[1]  for  i=1:f.nmesh[1]+f.ng*2]
-        data = Array{Float64}(undef, length(x))
-        for k in eachindex(f.cells)
-            data[k] = getfield(f.cells[k], Symbol(varname))
-        end
-        ioff()
-        output_plot_func(x, data, levels=levels)        
-    else
-        error("undef plotdim")
-    end
-    savefig(figpath*varname*"_"*string(frame+FRAME_BASE)*".png",dpi=100)
-    close(1)
+    return a
 end
