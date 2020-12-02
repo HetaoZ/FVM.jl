@@ -93,9 +93,9 @@ function time_step!(f::Fluid; CFL::Float64 = 0.1)
         smax = max(smax, smaxtmptmp)
     end
     dt = minimum(f.d) / smax * CFL
-    if dt < TOL_STEP
-        error( "Too small time step!")
-    end
+    # if dt < TOL_STEP
+    #     error( "Too small time step!")
+    # end
     return dt
 end
 
@@ -109,7 +109,7 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
                     c.w = coeff[1] * c.w + coeff[2] * c.wb + coeff[3] * c.rhs * dt
 
 
-                    # correct_cell_w!(c, f.para["gamma"])
+                    correct_cell_w!(c, f.para["gamma"])
                     w2states!(c, f.para["gamma"])  
 
                 end
