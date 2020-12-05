@@ -59,8 +59,8 @@ end
 """
 function correct_cell_w!(c::Cell, gamma)
     if sign.([c.w[1], c.w[end], pressure(c.w, gamma)]) == [-1.0, -1.0, -1.0]
-        @warn "Negative mass density"
-        println(c)
+        # @warn "Negative mass density"
+        # println(c)
     elseif c.w[1] < 0 || c.w[end] < 0 || pressure(c.w, gamma) < 0
         # println("-- correct_cell_w: 1 --")
         # println("c.i = ", c.i)
