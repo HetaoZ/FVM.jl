@@ -48,6 +48,8 @@ function Base.copy!(c::Cell)
     cell.rhs = copy(c.rhs)
     cell.i = copy(c.i)
     cell.x = copy(c.x)
+    cell.mark = c.mark
+    cell.target_id = copy(c.target_id)
     return cell
 end
 

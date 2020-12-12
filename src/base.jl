@@ -13,6 +13,9 @@ mutable struct Cell
     # 几何量
     i::Array{Int,1} # 网格编号
     x::Array{Float64,1}
+    # 标记
+    mark::Int8
+    target_id::Array{Int,1}
 end
 
 function Cell(dim::Int; rho::T = 1.0, u::Array{T} = zeros(Float64,dim), p::T = 1., gamma::Float64 = 1.4) where T <: Real
@@ -24,7 +27,9 @@ function Cell(dim::Int; rho::T = 1.0, u::Array{T} = zeros(Float64,dim), p::T = 1
     states2w(rho=rho,u=u,e=pressure_to_e(rho=rho, p=p, gamma=gamma)), 
     zeros(Float64,2+dim), 
     # 几何量
-    zeros(Int,dim), zeros(Float64,dim))  
+    zeros(Int,dim), zeros(Float64,dim),
+    # 标记
+    1, zeros(Int, dim))  
 end
 
 """
