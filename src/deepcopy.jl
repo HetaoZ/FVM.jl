@@ -49,7 +49,7 @@ function Base.copy!(c::Cell)
     cell.i = copy(c.i)
     cell.x = copy(c.x)
     cell.mark = c.mark
-    cell.target_id = copy(c.target_id)
+    cell.target_id = c.target_id
     return cell
 end
 

@@ -15,7 +15,7 @@ mutable struct Cell
     x::Array{Float64,1}
     # 标记
     mark::Int8
-    target_id::Array{Int,1}
+    target_id::CartesianIndex
 end
 
 function Cell(dim::Int; rho::T = 1.0, u::Array{T} = zeros(Float64,dim), p::T = 1., gamma::Float64 = 1.4) where T <: Real
@@ -29,7 +29,7 @@ function Cell(dim::Int; rho::T = 1.0, u::Array{T} = zeros(Float64,dim), p::T = 1
     # 几何量
     zeros(Int,dim), zeros(Float64,dim),
     # 标记
-    1, zeros(Int, dim))  
+    1, CartesianIndex(0))  
 end
 
 """
