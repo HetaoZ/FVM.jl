@@ -43,7 +43,7 @@ frame = 0
 time = 0
 N = 1000000
 
-while frame < 1 && time < 10.e-3
+while frame < 1 && time < 1e-3
     global m, frame, time
     dt = FVM.time_step!(f, CFL=0.05)
     FVM.advance!(f, dt)
