@@ -14,10 +14,8 @@ DUtils = "76b634e0-923b-4e58-9899-68d51535f6af"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MathKits = "0aefbb3a-8f27-41be-8eac-0ff28e0d4a49"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
-
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
