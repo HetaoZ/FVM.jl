@@ -70,12 +70,12 @@ function get_ausm_flux!(fL::Vector{Float64}, fR::Vector{Float64}, wL::Vector{Flo
     return f
 end
 
-get_dflux!(reconst scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int) = get_flux!(reconst scheme, ws[:,1:4], para, axis = axis) - get_flux!(reconst scheme, ws[:,2:5], para, axis = axis)
+get_dflux!(reconst_scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int) = get_flux!(reconst_scheme, ws[:,1:4], para, axis = axis) - get_flux!(reconst_scheme, ws[:,2:5], para, axis = axis)
 
 """
 'axis' stands for the space dimension of the flux.
 """
-function get_flux!(reconst scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux scheme::String = "AUSM")
+function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
     if reconst scheme == "MUSCL"
         fL, fR, wL, wR = get_muscl_stencil_interp!(ws, para, axis = axis)
     elseif reconst scheme == "WENO"
@@ -84,7 +84,7 @@ function get_flux!(reconst scheme::String, ws::Array{Float64,2}, para::Dict; axi
         error("undef reconst scheme")
     end
 
-    f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux scheme = flux scheme)
+    f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux_scheme = flux_scheme)
 
     # if f[1] != 0.0
     #     println("f = ", f)
@@ -181,7 +181,7 @@ function get_PP_5(Ma::Float64, fa::Float64, s::Float64)
     return PP_5
 end
 
-function get_stencil_flux!(FL::Vector{Float64}, FR::Vector{Float64}, WL::Vector{Float64}, WR::Vector{Float64}, para::Dict; axis::Int = -10, flux scheme::String = "AUSM")
+function get_stencil_flux!(FL::Vector{Float64}, FR::Vector{Float64}, WL::Vector{Float64}, WR::Vector{Float64}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
     if flux scheme == "LF"
         f = get_lf_flux!(FL, FR, WL, WR, para["gamma"])
     elseif flux scheme == "AUSM"

@@ -3,8 +3,8 @@
 # addprocs(1)
 
 println("Opened ", nworkers()," process(es) of PID ", workers())
-@everywhere include("src/FVM.jl")
-@everywhere using .FVM
+
+@everywhere using FVM
 
 @everywhere using DistributedArrays
 
