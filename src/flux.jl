@@ -76,9 +76,9 @@ get_dflux!(reconst_scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int)
 'axis' stands for the space dimension of the flux.
 """
 function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
-    if reconst scheme == "MUSCL"
+    if reconst_scheme == "MUSCL"
         fL, fR, wL, wR = get_muscl_stencil_interp!(ws, para, axis = axis)
-    elseif reconst scheme == "WENO"
+    elseif reconst_scheme == "WENO"
         error("undef reconst scheme")
     else
         error("undef reconst scheme")
@@ -182,9 +182,9 @@ function get_PP_5(Ma::Float64, fa::Float64, s::Float64)
 end
 
 function get_stencil_flux!(FL::Vector{Float64}, FR::Vector{Float64}, WL::Vector{Float64}, WR::Vector{Float64}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
-    if flux scheme == "LF"
+    if flux_scheme == "LF"
         f = get_lf_flux!(FL, FR, WL, WR, para["gamma"])
-    elseif flux scheme == "AUSM"
+    elseif flux_scheme == "AUSM"
         f = get_ausm_flux!(FL, FR, WL, WR, para["gamma"], axis = axis)
     else
         error("undef flux scheme")
