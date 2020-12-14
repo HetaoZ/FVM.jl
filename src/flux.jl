@@ -70,66 +70,69 @@ function get_ausm_flux!(fL::Vector{Float64}, fR::Vector{Float64}, wL::Vector{Flo
     return f
 end
 
-get_dflux!(reconst_scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int) = get_flux!(reconst_scheme, ws[:,1:4], para, axis = axis) - get_flux!(reconst_scheme, ws[:,2:5], para, axis = axis)
+get_dflux!(reconst scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int) = get_flux!(reconst scheme, ws[:,1:4], para, axis = axis) - get_flux!(reconst scheme, ws[:,2:5], para, axis = axis)
 
 """
-这里的axis表示通量所在维度。
+'axis' stands for the space dimension of the flux.
 """
-function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
-    if reconst_scheme == "MUSCL"
+function get_flux!(reconst scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux scheme::String = "AUSM")
+    if reconst scheme == "MUSCL"
         fL, fR, wL, wR = get_muscl_stencil_interp!(ws, para, axis = axis)
-    elseif reconst_scheme == "WENO"
+    elseif reconst scheme == "WENO"
         error("undef reconst scheme")
     else
         error("undef reconst scheme")
     end
 
-    f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux_scheme = flux_scheme)
+    f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux scheme = flux scheme)
 
+    # if f[1] != 0.0
+    #     println("f = ", f)
+    # end
 
     return f
 end
 
 function get_flux_vars(w::Vector{Float64}, gamma::Float64)
     if w[1] == 0.
-        rho, u, E, p, a = 0., zeros(Float64, length(w) - 2), 0., 0., 0.
+        rho, u, E, p, a = 0., zeros(Float64, 3), 0., 0., 0.
     else
         rho = w[1]
         u = w[2:end-1] ./ w[1]
         E = w[end] / w[1]
         e = E - 0.5 * MK.norm2(u)
-        p = pressure(rho = w[1], e = e, gamma = gamma)
+        p = pressure(w[1], e, gamma)
         # a = p < 0 ? 0.0 : sound_speed(rho = w[1], p = p, gamma = gamma)
-        a = sound_speed(rho = w[1], p = p, gamma = gamma)
+        a = sound_speed(w[1], p, gamma)
     end
     return rho, u, E, p, a
 end
 
 function get_lf_flux!(FL::Vector{Float64},FR::Vector{Float64},WL::Vector{Float64},WR::Vector{Float64}, gamma::Float64)
     if WL[1] == 0.
-        uL, EL, pL, WL, aL = zeros(Float64, length(WL) - 2), 0., 0., zeros(Float64, length(WL)), 0.
+        uL, EL, pL, WL, aL = zeros(Float64, 3), 0., 0., zeros(Float64, length(WL)), 0.
     else
         uL = WL[2:end-1] ./ WL[1]
         EL = WL[end] / WL[1]
         eL = EL - 0.5 * MK.norm2(uL)
-        pL = pressure(rho = WL[1], e = eL, gamma = gamma)
+        pL = pressure(WL[1], eL, gamma)
         # if pL < 0.
         #     aL = 0.
         # else
-            aL = sound_speed(rho = WL[1], p = pL, gamma = gamma)
+            aL = sound_speed(WL[1], pL, gamma)
         # end
     end
     if WR[1] == 0.
-        uR, ER, pR, WR, aR = zeros(Float64, length(WL) - 2), 0., 0., zeros(Float64, length(WL)), 0.
+        uR, ER, pR, WR, aR = zeros(Float64, 3), 0., 0., zeros(Float64, length(WL)), 0.
     else
         uR = WR[2:end-1] ./ WR[1]
         ER = WR[4]/WR[1]
         eR = ER - 0.5 * MK.norm2(uR)
-        pR = pressure(rho = WR[1], e = eR, gamma = gamma)
+        pR = pressure(WR[1], eR, gamma)
         # if pR < 0.
         #     aR = 0.
         # else
-            aR = sound_speed(rho = WR[1], p = pR, gamma = gamma)
+            aR = sound_speed(WR[1], pR, gamma)
         # end
     end
     α = max(norm(uL)+aL, norm(uR)+aR)
@@ -149,13 +152,11 @@ function get_MMa_4(Ma::Float64, fa::Float64, s::Float64)
     return MMa_4
 end
 
-
-
 """
 MUSCL scheme
 """
 function get_muscl_stencil_interp!(W::Array{Float64}, para::Dict; axis::Int = -10)
-    # 非粘性部分
+    # inviscous part
     if size(W,2) == 2
         FL, FR, WL, WR = bi_interp!(axis, W[:,1], W[:,2], para["gamma"])
     elseif size(W,2) == 4
@@ -180,10 +181,10 @@ function get_PP_5(Ma::Float64, fa::Float64, s::Float64)
     return PP_5
 end
 
-function get_stencil_flux!(FL::Vector{Float64}, FR::Vector{Float64}, WL::Vector{Float64}, WR::Vector{Float64}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
-    if flux_scheme == "LF"
+function get_stencil_flux!(FL::Vector{Float64}, FR::Vector{Float64}, WL::Vector{Float64}, WR::Vector{Float64}, para::Dict; axis::Int = -10, flux scheme::String = "AUSM")
+    if flux scheme == "LF"
         f = get_lf_flux!(FL, FR, WL, WR, para["gamma"])
-    elseif flux_scheme == "AUSM"
+    elseif flux scheme == "AUSM"
         f = get_ausm_flux!(FL, FR, WL, WR, para["gamma"], axis = axis)
     else
         error("undef flux scheme")
@@ -218,12 +219,4 @@ function minmod(a::Float64, b::Float64)
         c = 0.
     end
     return c
-end
-
-function reflective_cell!(c::Cell, axis::Int)
-    rc = copy!(c)
-    rc.w[1+axis] *= -1
-    rc.wb[1+axis] *= -1
-    rc.u[axis] *= -1
-    return rc
 end

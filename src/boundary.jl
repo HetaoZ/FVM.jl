@@ -1,66 +1,112 @@
 
 """
-gcells是要被修改的边界外单元。cells是作为参照的边界内单元。
+Corners are not to be updated.
 """
-function ghost_boundary_cell!(cells::SubArray, gcells::Array{Cell}, boundary::String; axis::Int = -10)
-    copy_to!(cells, gcells)
-    if boundary == "refl"
-        factor = - 1
-    else
-        factor = 1
-    end
-
-    for k in eachindex(cells)
-
-        gcells[k].u[axis] *= factor
-        gcells[k].w[axis + 1] *= factor
-    end 
-end
-
-function set_bounds!(f::Fluid, boundaries::Array{String})
-    f.boundaries = boundaries
-    update_boundaries!(f)
-end
-
-
-"""
-一个合理的思路是：
-1. 把要修改的子数组的索引modrange发送到pid分区。
-
-2. 在pid分区上操作。首先确定要修改的子数组索引modrange与pid分区索引pidrange的交集intrange。
-
-3. 对于不需要修改的子数组，直接从本地拉取到pid分区。
-
-4. 其余不需要修改的参数也从本地拉取即可。
-
-5. 在pid分区调用函数计算，最后把结果拉取到本地。
-"""
-function update_boundaries!(f::Fluid)
-    nsize = (f.nmesh .+ f.ng*2) ./f.dist
-    for n in nsize
-        if n < f.ng * 2
-            error("Too small nsize")
-        end
-    end
-    @sync for pid in workers() 
+function update_bounds!(f::Fluid)
+    ng = f.ng
+    nmesh = f.nmesh
+    @sync for pid in workers()
         @spawnat pid begin
-            pid_range = localindices(f.cells)
-            bias = [r[1] for r in pid_range] .- 1
-            for axis in 1:f.dim
-                for side in 1:2
-                    for i in (f.ng+f.nmesh[axis])*(side-1) .+ (1:f.ng)
-                        int_range = map(intersect, pid_range, Tuple([k == axis ? (i:i) : (1:size(f.cells, k)) for k in 1:f.dim]))
-                        if length_of_tuples(int_range) > 0  # 如果intrange索引的“覆盖面积”是0,那么就不做计算。
-                            ref_i = 2*(f.ng+f.nmesh[axis]*(side-1))+1-i
-                            ref_range = Tuple([k == axis ? (ref_i:ref_i) : int_range[k] for k = 1:f.dim])
-                            local_int_range = Tuple([int_range[k] .- bias[k] for k in 1:f.dim])
-                            ghost_boundary_cell!(f.cells[ref_range...], localpart(f.cells)[local_int_range...], f.boundaries[axis, side], axis = axis)   
-                            # println(("side",side,"pid_range = ",pid_range,"bias = ",bias,"int_range = ",int_range,"local_int_range",local_int_range,"ref_range = ",ref_range))                                                
+            inds = localindices(f.rho)
+            bias = [inds[k][1] - 1 for k = 1:3]
+            # println("inds = ", inds)
+            # println("bias = ", bias)
+            for i in inds[1], j in inds[2], k in inds[3]
+                if i < f.ng+1
+                    rho = f.rho[2*ng+1-i, j, k]
+                    u = f.u[2*ng+1-i, j, k]
+                    u[1] *= BOUND_TYPE[f.boundx[1]]
+                    e = f.e[2*ng+1-i, j, k]
+                    p = f.p[2*ng+1-i, j, k]
+                    w = status_to_w(rho, u, e)
+                    
+                    localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
+                    localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
+                    localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
+                    
+                    localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
+                    
+                    localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w
+                end                        
+                if i > nmesh[1]+ng
+                    rho = f.rho[2*(nmesh[1]+ng)+1-i, j, k]
+                    u = f.u[2*(nmesh[1]+ng)+1-i, j, k]
+                    u[1] *= BOUND_TYPE[f.boundx[2]]
+                    e = f.e[2*(nmesh[1]+ng)+1-i, j, k]
+                    p = f.p[2*(nmesh[1]+ng)+1-i, j, k]
+                    w = status_to_w(rho, u, e)
+
+                    localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
+                    localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
+                    localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
+                    
+                    localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
+                    
+                    localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w                        
+                end 
+                if f.realdim > 1
+                    if j < f.ng+1
+                        rho = f.rho[i, 2*ng+1-j, k]
+                        u = f.u[i, 2*ng+1-j, k]
+                        u[2] *= BOUND_TYPE[f.boundy[1]]
+                        e = f.e[i, 2*ng+1-j, k]
+                        p = f.p[i, 2*ng+1-j, k]
+                        w = status_to_w(rho, u, e)
+
+                        localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
+                        localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
+                        localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
+                        
+                        localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
+                        
+                        localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w       
+                    end
+                    if j > nmesh[2]+ng
+                        rho = f.rho[i, 2*(f.nmesh[2]+f.ng)+1-j, k]
+                        u = f.u[i, 2*(f.nmesh[2]+f.ng)+1-j, k]
+                        u[2] *= BOUND_TYPE[f.boundy[2]]
+                        e = f.e[i, 2*(f.nmesh[2]+f.ng)+1-j, k]
+                        p = f.p[i, 2*(f.nmesh[2]+f.ng)+1-j, k]
+                        w = status_to_w(rho, u, e)
+
+                        localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
+                        localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
+                        localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
+                        
+                        localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
+                        
+                        localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w                            
+                    end
+                    if f.realdim > 2
+                        if k < ng+1 || k > nmesh[3]+ng
+                            if k < f.ng+1
+                                rho = f.rho[i, j, 2*ng+1-k]
+                                u = f.u[i, j, 2*ng+1-k]
+                                u[3] *= BOUND_TYPE[f.boundz[1]]
+                                e = f.e[i, j, 2*ng+1-k]
+                                p = f.p[i, j, 2*ng+1-k]
+                                w = status_to_w(rho, u, e)
+                            else
+                                rho = f.rho[i, j, 2*(f.nmesh[3]+f.ng)+1-k]
+                                u = f.u[i, j, 2*(f.nmesh[3]+f.ng)+1-k]
+                                u[3] *= BOUND_TYPE[f.boundz[2]]
+                                e = f.e[i, j, 2*(f.nmesh[3]+f.ng)+1-k]
+                                p = f.p[i, j, 2*(f.nmesh[3]+f.ng)+1-k]
+                                w = status_to_w(rho, u, e)
+                            end
+                            localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
+                            localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
+                            localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
+                            
+                            localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
+                            
+                            localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w
                         end
                     end
                 end
+
+                              
             end
         end
-    end
-    # showfield!(f.cells, "rho")
+    end   
 end

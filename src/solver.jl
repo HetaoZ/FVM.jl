@@ -25,74 +25,38 @@ function advance!(f::Fluid, dt::Float64)
         # println("-- advance_fluid: 5 --")
         # showfield!(f.cells, "rho", 13:20)
 
-        # 下面这种写法是错的，因为wb不会随着rk更新。
-        # update_fluxes_and_cells!(f, rk = rk, dt = dt)
-        update_boundaries!(f)
+        update_bounds!(f)
 
         # println("-- advance_fluid: 6 --")
         # showfield!(f.cells, "rho", 13:20)
 
         
     end
-
 end
 
-function solve!(f::Fluid; CFL::Float64 = 0.3, maxtime::Float64 = 1, maxframe::Int = 1, cutframe::Int = 1, varname::String = "rho", axis::Int = 1, filepath::String = "../outputdata/", draw::Bool = false, figpath::String = "../outputfig/", plotdim::String = "2D", levels::Vector=[0,0,0])
-    time = 0.
-    frame = 0
-    dt = 0.
-    println("|||||||||||||||||||||||||||||||||||||||||||")
-    @printf "Frame=%6d, Step=%5.3e, Task=%7.3f%%\n" frame dt time/maxtime*100
-
-    if OUTPUTDATA
-        output!(Int(frame/cutframe), time, filepath = filepath)
-        output!(f, varname = varname, axis = axis, frame = Int(frame/cutframe), filepath = filepath)
-        if draw
-            outputfig!(f, frame = Int(frame/cutframe), varname = varname, axis = axis, figpath = figpath, plotdim = plotdim, levels=levels)
-        end
-    end
-    while time < maxtime && frame < maxframe
-        dt = time_step!(f, CFL = CFL)
-        advance!(f, dt)
-        time += dt
-        frame += 1
-        print("Current frame = ",frame,"\r")
-        if frame%cutframe == 0
-            println("|||||||||||||||||||||||||||||||||||||||||||")
-            @printf "Frame=%6d, Step=%5.3e, Task=%7.3f%%\n" frame dt time/maxtime*100
-            if OUTPUTDATA
-                output!(Int(frame/cutframe), time, filepath = filepath)
-                output!(f, varname = varname, axis = axis, frame = Int(frame/cutframe), filepath = filepath)
-                if draw
-                    outputfig!(f, frame = Int(frame/cutframe), varname = varname, axis = axis, figpath = figpath, plotdim = plotdim,levels=levels)
-                end                
+"""
+Don't use deepcopy for DArray. 
+"""
+function backup_w!(f)
+    @sync for pid in workers()
+        @spawnat pid begin
+            inds = localindices(f.rho)
+            bias = [inds[k][1] - 1 for k = 1:3]
+            for i in inds[1], j in inds[2], k in inds[3]
+                localpart(f.wb)[i-bias[1], j-bias[2], k-bias[3]] = f.w[i,j,k]
             end
         end
-    end
+    end       
 end
 
-"""
-像time_step!()这样仅读取的函数，则无需远程，可直接读取DArray。
-"""
 function time_step!(f::Fluid; CFL::Float64 = 0.1)
     smax = 0.
-    @sync for pid in workers()
-        smaxtmptmp= @fetchfrom pid begin
-            smaxtmp = 0.
-            for c in localpart(f.cells)
-                if c.rho == 0.
-                    s = 0.
-                else
-                    s = sound_speed(rho = c.rho, p = c.p, gamma = f.para["gamma"])
-                end
-                
-                smaxtmp = maximum([smaxtmp; s .+ map(abs, c.u)])
-            end
-            smaxtmp
-        end
-        smax = max(smax, smaxtmptmp)
+    for id in eachindex(f.rho)
+        s = sound_speed(f.rho[id], f.p[id], f.para["gamma"])
+        u = f.u[id]
+        smax = maximum([smax; s .+ map(abs, u)])
     end
-    dt = minimum(f.d) / smax * CFL
+    dt = minimum(f.d[1:f.realdim]) / smax * CFL
     # if dt < TOL_STEP
     #     error( "Too small time step!")
     # end
@@ -103,106 +67,92 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
     coeff = RK_COEFF[:, rk]
     @sync for pid in workers()
         @spawnat pid begin
-            for c in localpart(f.cells)
-                if MK.betweeneq(c.x, f.point1, f.point2)
-            
-                    c.w = coeff[1] * c.w + coeff[2] * c.wb + coeff[3] * c.rhs * dt
 
+            inds = localindices(f.rho)
+            bias = [inds[k][1] - 1 for k = 1:3]
 
-                    correct_cell_w!(c, f.para["gamma"])
-                    w2states!(c, f.para["gamma"])  
+            for i in inds[1], j in inds[2], k in inds[3]
+                if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
+                    w = coeff[1] * f.w[i,j,k] + coeff[2] * f.wb[i,j,k] + coeff[3] * f.rhs[i,j,k] * dt
 
+                    w = correct_cell_w(w, f.para["gamma"])
+
+                    localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w
+
+                    rho, u, e, p = w_to_status(w, f.para["gamma"])  
+
+                    localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
+                    localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
+                    localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
+                    localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
                 end
             end
         end
     end
+    
 end
 
 function update_rhs!(f::Fluid)
-    if f.dim == 1
-        @sync for pid in workers()
-            @spawnat pid begin
-                ws = Array{Float64,2}(undef, 2+f.dim, 5)
-    
-                for c in localpart(f.cells) # 千万别漏写localpart 
-                    if MK.betweeneq(c.x, f.point1, f.point2)
-                        c.rhs = zeros(Float64, 2+f.dim)
-                        ci = copy(c.i)
-    
-                        for j in 1:5
-                            sw = f.cells[ci[1]+j-3].w
-                            for i = 1:2+f.dim
-                                ws[i,j] = sw[i]
-                            end
-                        end    
-    
-                        c.rhs += get_dflux!(f.para["reconst_scheme"], ws, f.para, 1) / f.d[1] 
-                                         
+    @sync for pid in workers()
+        @spawnat pid begin
+            inds = localindices(f.rho)
+            bias = [inds[k][1] - 1 for k = 1:3]
+            for i in inds[1], j in inds[2], k in inds[3]
+                if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
+                    rhs = zeros(Float64, 5)
+                    ws = Array{Float64,2}(undef, 5, 5)
+                    # axis 1
+                    for jj in 1:5
+                        sw = f.w[i+jj-3, j, k]
+                        for ii = 1:5
+                            ws[ii, jj] = sw[ii]
+                        end
                     end
+                    rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 1) / f.d[1]
+                    
+                    # if rhs[1] != 0.0
+                    # println("-- update_rhs: 1 --")
+                    # println(rhs)
+                    # println(ws)
+                    # end
+
+                    # axis 2
+                    if f.realdim > 1
+                        for jj in 1:5
+                            sw = f.w[i, j+jj-3, k]
+                            for ii = 1:5
+                                ws[ii, jj] = sw[ii]
+                            end
+                        end
+                        rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 2) / f.d[2]  
+                        # axis 3
+                        if f.realdim > 2
+                            for jj in 1:5
+                                sw = f.w[i, j, k+jj-3]
+                                for ii = 1:5
+                                    ws[ii, jj] = sw[ii]
+                                end
+                            end
+                            rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 3) / f.d[3] 
+                        end  
+                    end 
+                    
+                    localpart(f.rhs)[i-bias[1], j-bias[2], k-bias[3]] = rhs
                 end
             end
         end
-    elseif f.dim == 2
-        @sync for pid in workers()
-            @spawnat pid begin
-                ws = Array{Float64,2}(undef, 2+f.dim, 5)
-    
-                for c in localpart(f.cells) # 千万别漏写localpart 
-                    if MK.betweeneq(c.x, f.point1, f.point2)
-                        c.rhs = zeros(Float64, 2+f.dim)
-                        ci = copy(c.i)
-    
-                        for j in 1:5
-                            sw = f.cells[ci[1]+j-3,ci[2]].w
-                            for i = 1:4
-                                ws[i,j] = sw[i]
-                            end
-                        end    
-    
-                        c.rhs += get_dflux!(f.para["reconst_scheme"], ws, f.para, 1) / f.d[1] 
-                        
-    
-                        for j in 1:5
-                            sw = f.cells[ci[1],ci[2]+j-3].w
-                            for i = 1:4
-                                ws[i,j] = sw[i]
-                            end
-                        end    
-    
-                        c.rhs += get_dflux!(f.para["reconst_scheme"], ws, f.para, 2) / f.d[2]                    
-                    end
-                end
-            end
-        end
-    else
-        error("undef dim")
     end
 end 
 
-# """
-# 这样写会慢30%
-# """
-# function testupdate_rhs!(f::Fluid)
-#     @sync for pid in workers()
-#         @spawnat pid begin
-#             ws = Array{Float64,2}(undef, 2+f.dim, 5)
-#             for c in localpart(f.cells) # 千万别漏写localpart 
-#                 if MK.betweeneq(c.x, f.point1, f.point2)     
-#                     c.rhs = zeros(Float64, 2+f.dim)
-#                     for axis = 1:f.dim
-#                         i = copy(c.i)
-                         
-#                         for k = 1:5
-#                             i[axis] = c.i[axis] + k - 3
-#                             ws[:,k] = f.cells[Tuple(i)...].w
-#                         end 
-                        
-#                         c.rhs += (get_flux!(f.para["reconst_scheme"], ws[:,1:4], f.para, axis = axis) - get_flux!(f.para["reconst_scheme"], ws[:,2:5], f.para, axis = axis)) / f.d[axis]
-#                     end                       
-                    
-#                 end
-#             end
-#         end
-#     end
-# end 
+function correct_cell_w(w, gamma)
+    if sign.([w[1], w[end], pressure(w, gamma)]) == [-1.0, -1.0, -1.0]
+        # @warn "Negative mass density"
+        # println(c)
+    elseif w[1] < 0 || w[end] < 0 || pressure(w, gamma) < 0
+        # println("-- correct_cell_w: 1 --")
+        # println("c.i = ", c.i)
 
+        w = zeros(Float64, 5)
+    end
+    return w
+end

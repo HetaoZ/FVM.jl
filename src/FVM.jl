@@ -3,9 +3,8 @@ module FVM
 using DelimitedFiles, Printf, Distributed, LinearAlgebra, Statistics, WriteVTK
 using DUtils
 using DistributedArrays
-using MathKits
-const MK = MathKits
-export Fluid, Cell, fill_fluid!, set_bounds!, after_shock, advance!, solve!, save_to_vtk, save_mesh, save_to_txt, save_to_fig, copyfluid!, clear_fluid_in_box!, review, save_review
+using MathKits; const MK = MathKits
+export Fluid
 
 const OUTPUTDATA = true
 const AUSM_Kp = 0.25
@@ -20,21 +19,17 @@ const FRAME_BASE = 1000000
 const RK_COEFF = [1.0 0.75 1/3;
                   0.0 0.25 2/3;
                   1.0 0.25 2/3]
-
+const BOUND_TYPE = Dict("free"=>1.0, "refl"=>-1.0)
 
 include("base.jl")
 include("utils.jl")
+include("physical.jl")
 include("io_pre.jl")
-include("state.jl")
 include("boundary.jl")
 include("flux.jl")
-include("source.jl")
 include("solver.jl")
-include("deepcopy.jl")
-include("check.jl")
-include("io_post.jl")
+include("copy.jl")
 include("io_post_vtk.jl")
-# include("io_post_txt.jl")
 
 ###
 end

@@ -1,88 +1,102 @@
-
-
-mutable struct Cell 
-    # 物理量
-    rho::Float64
-    u::Array{Float64,1}
-    e::Float64
-    p::Float64
-    # 迭代量
-    w::Array{Float64,1}
-    wb::Array{Float64,1}
-    rhs::Array{Float64,1}
-    # 几何量
-    i::Array{Int,1} # 网格编号
-    x::Array{Float64,1}
-    # 标记
-    mark::Int8
-    target_id::CartesianIndex
-end
-
-function Cell(dim::Int; rho::T = 1.0, u::Array{T} = zeros(Float64,dim), p::T = 1., gamma::Float64 = 1.4) where T <: Real
-    Cell(
-    # 物理量
-    rho, u, pressure_to_e(rho=rho, p=p, gamma=gamma), p,
-    # 迭代量
-    states2w(rho=rho,u=u,e=pressure_to_e(rho=rho, p=p, gamma=gamma)),
-    states2w(rho=rho,u=u,e=pressure_to_e(rho=rho, p=p, gamma=gamma)), 
-    zeros(Float64,2+dim), 
-    # 几何量
-    zeros(Int,dim), zeros(Float64,dim),
-    # 标记
-    1, CartesianIndex(0))  
-end
-
 """
-流场
+3D fluid definition
 """
 mutable struct Fluid
-    # 维数
-    dim::Int
-    # 几何量
-    point1::Array{T} where T <: Real 
-    point2::Array{T} where T <: Real 
-    nmesh::Array{Int} # 各维度网格数
-    d::Array{T} where T <: Real# 各维度步长
-    ng::Int 
-    dist::Array{Int} # 各维度分区数向量
-    ndiv::Int # 分区总数 = prod(dist)
-    # 单元
-    cells::DArray{Cell,N,A} where N where A
-    # 边界类型
-    boundaries::Array{String}
-    # 可以像C++一样放一个成员函数在这里，但没必要。
-    # solver::Function
-    # 常数
+    realdim::Int
+
+    point1::Array 
+    point2::Array
+    nmesh::Vector{Int}
+    d::Vector
+    ng::Int
+
+    dist::Array{Int} 
+    ndiv::Int
+
+    NX::Int
+    NY::Int
+    NZ::Int
+
+    x::Vector
+    y::Vector
+    z::Vector 
+
+    rho::DArray{Float64}
+    u::DArray
+    e::DArray{Float64}
+    p::DArray{Float64}
+
+    w::DArray
+    wb::DArray
+    rhs::DArray
+
+    mark::DArray{Int8}
+    target_id::DArray
+
+    boundx::Array{String}
+    boundy::Array{String}
+    boundz::Array{String}
+
     para::Dict
 end
 
-"""
-创建一个流场。
-"""
-function Fluid(dim::Int; point1::Array = [0.], point2::Array = [1.], nmesh::Array = [1], ng::Int = 1, dist::Array = [1], constants::Dict = Dict())
-    # if (nmesh .+ ng*2) .% dist != zeros(Int, length(nmesh))
-    #     error("(nmesh .+ ng * 2) must be divisible by dist.")
-    # end
-    # println(typeof(Cell(1)))
-    Fluid(dim, point1, point2, nmesh, (point2 - point1) ./ nmesh, ng, dist, prod(dist),
-    # 分布式矩阵
-    distribute([Cell(dim)]), 
-    # 边界
-    Array{String}(undef, dim, 2),
-    # 常数
-    Dict("gamma"=>1.4, # 多方指数
+function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1, 1, 1], nmesh::Vector{Int} = [1, 1, 1], ng::Int = 2, dist::Array = [1, 1, 1], para::Dict = Dict("rho0"=>0.,
+    "u0"=>[0., 0., 0.],
+    "e0"=>0.,
+    "p0"=>0.,
+    "gamma"=>1.4, # 多方指数
     "mu"=>1.e-6, # 动力粘性系数
     "Pr"=>1.0, # 热传导系数
     "L0"=>1, # 特征长度
     "U0"=>1, # 特征速度
-    "background_is_filled"=>false, 
-    "total_mass"=>0., 
-    "total_is_summed"=>false, 
-    "consider_vis_item"=>false,
-    "reconst_scheme"=>"MUSCL", 
-    "flux_scheme"=>"AUSM"
+    "background is filled"=>false, 
+    "total mass"=>0., 
+    "total is summed"=>false, 
+    "viscosity"=>false,
+    "reconst scheme"=>"MUSCL", 
+    "flux scheme"=>"AUSM"
     ))
+
+    d = (point2 - point1) ./ nmesh
+
+    NX = nmesh[1]+2*ng
+    x = [point1[1] + d[1] * (i-0.5-ng) for i = 1:NX]
+    
+    if realdim > 1
+        NY = nmesh[2]+2*ng
+        y = [point1[2] + d[2] * (i-0.5-ng) for i = 1:NY]
+    else
+        NY = 1
+        y = [point1[2]]
+    end
+    if realdim > 2
+        NZ = nmesh[3]+2*ng
+        z = [point1[3] + d[3] * (i-0.5-ng) for i = 1:NZ]
+    else
+        NZ = 1
+        z = [point1[3]]
+    end
+
+    return Fluid(realdim, point1, point2, nmesh, d, ng, dist, prod(dist),
+
+    NX, NY, NZ,
+    x, y, z,
+
+    distribute(fill(para["rho0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
+    distribute(fill(para["u0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
+    distribute(fill(para["e0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
+    distribute(fill(para["p0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
+
+    distribute(fill(zeros(Float64, 5), (NX, NY, NZ)), procs = workers(), dist = dist),
+    distribute(fill(zeros(Float64, 5), (NX, NY, NZ)), procs = workers(), dist = dist),
+    distribute(fill(zeros(Float64, 5), (NX, NY, NZ)), procs = workers(), dist = dist),
+
+    distribute(fill(Int8(1), (NX, NY, NZ)), procs = workers(), dist = dist),
+    distribute(fill(zeros(Int, 3), (NX, NY, NZ)), procs = workers(), dist = dist),
+
+    ["none", "none"],
+    ["none", "none"],
+    ["none", "none"],
+
+    para)
 end
-
-
-

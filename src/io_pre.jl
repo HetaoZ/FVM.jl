@@ -7,7 +7,7 @@ mshock(1.01e5,1.2,0,1.21,1.4,-1) = (1.630779226806516, 155686.45, -109.718290862
 """
 function after_shock(p1,ρ1,u1,Ms,γ,sdir)
     @assert Ms >= 1
-    c1 = sound_speed(rho = ρ1, p = p1, gamma = γ)
+    c1 = sound_speed(ρ1, p1, γ)
     us = Ms * c1 * sdir
     U1 = u1 - us
     M1 = U1 / c1
@@ -24,61 +24,74 @@ function after_shock(p1,ρ1,u1,Ms,γ,sdir)
     return ρ2, p2, u2
 end
 
-function fill_fluid!(f::Fluid, cell::Cell)
-    f.cells = distribute(reshape([copy!(cell) for i in 1:prod(f.nmesh .+ f.ng*2)], Tuple(f.nmesh .+ f.ng*2)...), procs = workers(), dist = f.dist)
+function fill_fluid!(f::Fluid, rho, u, p)
+    f.para["rho0"] = rho
+    f.para["u0"] = u
+    f.para["p0"] = p
+    e = pressure_to_e(rho, p, f.para["gamma"])
+    f.para["e0"] = e
+    fill_fluid!(f, f.point1, f.point2, rho, u, p)
+    f.para["background is filled"] = true  
+end
+
+function fill_fluid!(f::Fluid, point1::Array, point2::Array, rho, u, p)
+    e = pressure_to_e(rho, p, f.para["gamma"])
+    w = status_to_w(rho, u, e)
     @sync for pid in workers()
         @spawnat pid begin
-            inds = localindices(f.cells)
-            bias = [inds[k][1] - 1 for k = 1:f.dim]
-            local_inds = Tuple([inds[k] .- bias[k] for k in 1:f.dim])
-            local_cells = getindex(localpart(f.cells), local_inds...)
-            for i in CartesianIndices(local_cells)
-                c = local_cells[i]
-                c.i = [i[k] + bias[k] for k = 1:f.dim]
-                c.x = f.d .* (c.i .- f.ng .- 0.5) .+ f.point1
-            end
-        end
-    end
-    f.para["background_is_filled"] = true  
-end
-
-function fill_fluid!(f::Fluid, cell::Cell, point1::Array, point2::Array)
-    if !f.para["background_is_filled"]
-        error("Please fill the background before this calling.")
-    else
-        @sync for pid in workers()
-            @spawnat pid begin
-                inds = localindices(f.cells)
-                bias = [inds[k][1] - 1 for k = 1:f.dim]
-                local_inds = Tuple([inds[k] .- bias[k] for k in 1:f.dim])
-                local_cells = getindex(localpart(f.cells), local_inds...)
-                for c in local_cells
-                    if MK.between(c.x, point1, point2)
-                        copy_to!(cell, c)
-                    end    
+            inds = localindices(f.rho)
+            bias = [inds[k][1] - 1 for k = 1:3]
+            for i in inds[1], j in inds[2], k in inds[3]
+                if MK.betweeneq([f.x[i], f.y[j], f.z[k]], point1, point2)
+                    localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
+                    localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
+                    localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
+                    
+                    localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
+                    localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w
                 end
             end
-        end        
-    end
-    
+        end
+    end    
 end
 
-function clear_cell!(c::Cell)
-    r = 0.0
-    c.rho = c.rho*r
-    c.u = zeros(Float64, size(c.u))
-    c.e = c.e
-    c.p = c.p*r
-    c.w = [c.rho, 0, 0, c.rho*c.e]
-end
 function clear_fluid_in_box!(f, point1, point2)
-    @sync for pid in workers()
-        @spawnat pid begin
-            for c in localpart(f.cells)
-                if MathKits.between(c.x, point1, point2)
-                    clear_cell!(c) 
-                end
-            end
-        end
+    fill_fluid!(f, point1, point2, 0., [0., 0., 0.], 0.)
+end
+
+function set_bounds!(f, bound_types...)
+    f.boundx = bound_types[1]
+    if f.realdim > 1
+        f.boundy = bound_types[2]
     end
+    if f.realdim > 2
+        f.boundz = bound_types[3]
+    end
+    update_bounds!(f)
+end
+
+"""
+Use 'command | tee -a log' in Linux Terminal to make a log.
+"""
+function review(f::Fluid)
+    println("-- short summary of Fluid --")
+    println("# parameters")
+    for k in keys(f.para)
+        println("  ",k," : ",f.para[k])
+    end
+    println("# mesh")
+    println("  real dimension : ", f.realdim)
+    println("  domain : ", Tuple(f.point1)," -> ", Tuple(f.point2))
+    println("  number of cells : ", length(f.rho))
+    println("  size of cells : ", size(f.rho))
+    println("# distribution")
+    showdist(f.rho)
+    println("# boundaries")
+    println("  axis 1 : ", f.boundx)
+    println("  axis 2 : ", f.boundy)
+    println("  axis 3 : ", f.boundz)
+    
+    println("# physical status")
+    println("  rho ∈ ", [minimum(f.rho), maximum(f.rho)])
+    println("  p ∈ ", [minimum(f.p), maximum(f.p)])
 end
