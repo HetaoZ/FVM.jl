@@ -24,6 +24,11 @@ function copy_fluid!(f::Fluid)
     f1.p = copy_darray!(f.p, f.ndiv, f.dist)
 
     f1.w = copy_darray!(f.w, f.ndiv, f.dist)
+    f1.wb = copy_darray!(f.wb, f.ndiv, f.dist)
+    f1.rhs = copy_darray!(f.rhs, f.ndiv, f.dist)
+
+    f1.mark = copy_darray!(f.mark, f.ndiv, f.dist)
+    f1.target_id = copy_darray!(f.target_id, f.ndiv, f.dist)
 
     f1.boundx = copy(f.boundx)
     f1.boundy = copy(f.boundy)

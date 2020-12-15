@@ -10,7 +10,6 @@ function advance!(f::Fluid, dt::Float64)
 
     # @warn("rk is limited")
     for rk = 1:3
-        # println("-- rk = ",rk, " --")
 
         # println("-- advance_fluid: 3 --")
         # showfield!(f.cells, "flux", 13:20)
@@ -55,8 +54,15 @@ function time_step!(f::Fluid; CFL::Float64 = 0.1)
         s = sound_speed(f.rho[id], f.p[id], f.para["gamma"])
         u = f.u[id]
         smax = maximum([smax; s .+ map(abs, u)])
+        
     end
     dt = minimum(f.d[1:f.realdim]) / smax * CFL
+    if isnan(dt)
+        # if smax > 0.
+            println("smax = ", smax)
+            exit()
+        # end
+    end
     # if dt < TOL_STEP
     #     error( "Too small time step!")
     # end
@@ -75,7 +81,7 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
                 if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
                     w = coeff[1] * f.w[i,j,k] + coeff[2] * f.wb[i,j,k] + coeff[3] * f.rhs[i,j,k] * dt
 
-                    w = correct_cell_w(w, f.para["gamma"])
+                    # w = correct_cell_w(w, f.para["gamma"])
 
                     localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w
 
@@ -89,15 +95,17 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
             end
         end
     end
-    
 end
 
 function update_rhs!(f::Fluid)
+
     @sync for pid in workers()
         @spawnat pid begin
             inds = localindices(f.rho)
             bias = [inds[k][1] - 1 for k = 1:3]
+
             for i in inds[1], j in inds[2], k in inds[3]
+
                 if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
                     rhs = zeros(Float64, 5)
                     ws = Array{Float64,2}(undef, 5, 5)
@@ -138,6 +146,8 @@ function update_rhs!(f::Fluid)
                     end 
                     
                     localpart(f.rhs)[i-bias[1], j-bias[2], k-bias[3]] = rhs
+
+
                 end
             end
         end
