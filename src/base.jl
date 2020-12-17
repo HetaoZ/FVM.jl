@@ -4,43 +4,40 @@
 mutable struct Fluid
     realdim::Int
 
-    point1::Array 
-    point2::Array
+    point1::Vector{Real}
+    point2::Vector{Real}
     nmesh::Vector{Int}
-    d::Vector
+    d::Vector{Real}
     ng::Int
-
-    dist::Array{Int} 
-    ndiv::Int
 
     NX::Int
     NY::Int
     NZ::Int
 
-    x::Vector
-    y::Vector
-    z::Vector 
+    x::Vector{Real}
+    y::Vector{Real}
+    z::Vector{Real}
 
-    rho::DArray{Float64}
-    u::DArray
-    e::DArray{Float64}
-    p::DArray{Float64}
+    rho::SharedArray{Float64,3}
+    u::SharedArray{Float64,4}
+    e::SharedArray{Float64,3}
+    p::SharedArray{Float64,3}
 
-    w::DArray
-    wb::DArray
-    rhs::DArray
+    w::SharedArray{Float64,4}
+    wb::SharedArray{Float64,4}
+    rhs::SharedArray{Float64,4}
 
-    mark::DArray{Int8}
-    target_id::DArray
+    mark::SharedArray{Int8,3}
+    target_id::SharedArray{Int,4}
 
-    boundx::Array{String}
-    boundy::Array{String}
-    boundz::Array{String}
+    boundx::Vector{String}
+    boundy::Vector{String}
+    boundz::Vector{String}
 
     para::Dict
 end
 
-function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1, 1, 1], nmesh::Vector{Int} = [1, 1, 1], ng::Int = 2, dist::Array = [1, 1, 1], para::Dict = Dict("rho0"=>0.,
+function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1, 1, 1], nmesh::Vector{Int} = [1, 1, 1], ng::Int = 2, para::Dict = Dict("rho0"=>0.,
     "u0"=>[0., 0., 0.],
     "e0"=>0.,
     "p0"=>0.,
@@ -77,22 +74,22 @@ function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1
         z = [point1[3]]
     end
 
-    return Fluid(realdim, point1, point2, nmesh, d, ng, dist, prod(dist),
+    return Fluid(realdim, point1, point2, nmesh, d, ng,
 
     NX, NY, NZ,
     x, y, z,
 
-    distribute(fill(para["rho0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
-    distribute(fill(para["u0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
-    distribute(fill(para["e0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
-    distribute(fill(para["p0"], (NX, NY, NZ)), procs = workers(), dist = dist), 
+    SharedArray(zeros(Float64, (NX, NY, NZ))), 
+    SharedArray(zeros(Float64, (3, NX, NY, NZ))), 
+    SharedArray(zeros(Float64, (NX, NY, NZ))), 
+    SharedArray(zeros(Float64, (NX, NY, NZ))), 
 
-    distribute(fill(zeros(Float64, 5), (NX, NY, NZ)), procs = workers(), dist = dist),
-    distribute(fill(zeros(Float64, 5), (NX, NY, NZ)), procs = workers(), dist = dist),
-    distribute(fill(zeros(Float64, 5), (NX, NY, NZ)), procs = workers(), dist = dist),
+    SharedArray(zeros(Float64, (5, NX, NY, NZ))),
+    SharedArray(zeros(Float64, (5, NX, NY, NZ))),
+    SharedArray(zeros(Float64, (5, NX, NY, NZ))),
 
-    distribute(fill(Int8(1), (NX, NY, NZ)), procs = workers(), dist = dist),
-    distribute(fill(zeros(Int, 3), (NX, NY, NZ)), procs = workers(), dist = dist),
+    SharedArray(ones(Int8, (NX, NY, NZ))),
+    SharedArray(zeros(Int, (3, NX, NY, NZ))),
 
     ["none", "none"],
     ["none", "none"],

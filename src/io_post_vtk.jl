@@ -1,7 +1,17 @@
 function save_to_vtk(f, datanames, fields, fname)
     vtkfile = create_vtkfile(f, fname)
     for i in eachindex(datanames)
-        vtkfile[datanames[i]] = getfield(f, fields[i])
+        if fields[i] == :u
+            vtkfile["ux"] = getfield(f, :u)[1,:,:,:]
+            if f.realdim > 1
+                vtkfile["uy"] = getfield(f, :u)[2,:,:,:]
+                if f.realdim > 2
+                    vtkfile["uz"] = getfield(f, :u)[3,:,:,:]
+                end
+            end
+        else
+            vtkfile[datanames[i]] = getfield(f, fields[i])
+        end
     end
     outfiles = vtk_save(vtkfile)
 end

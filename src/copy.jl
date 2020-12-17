@@ -1,47 +1,22 @@
 function copy_fluid!(f::Fluid)
-    f1 = Fluid(realdim = f.realdim)
+    f1 = Fluid(realdim = f.realdim, point1 = f.point1, point2 = f.point2, nmesh = f.nmesh, ng = f.ng, para = f.para)
 
-    f1.point1 = copy(f.point1)
-    f1.point2 = copy(f.point2)
-    f1.nmesh = copy(f.nmesh)
-    f1.d = copy(f.d)
-    f1.ng = f.ng
+    for id in CartesianIndices(f.rho)
+        f1.rho[id] = f.rho[id]
+        f1.e[id] = f.e[id]
+        f1.p[id] = f.p[id]
+        f1.mark[id] = f.mark[id]
 
-    f1.dist = copy(f.dist)
-    f1.ndiv = f.ndiv
-
-    f1.NX = f.NX
-    f1.NY = f.NY
-    f1.NZ = f.NZ
-
-    f1.x = f.x
-    f1.y = f.y
-    f1.z = f.z
-
-    f1.rho = copy_darray!(f.rho, f.ndiv, f.dist)
-    f1.u = copy_darray!(f.u, f.ndiv, f.dist)
-    f1.e = copy_darray!(f.e, f.ndiv, f.dist)
-    f1.p = copy_darray!(f.p, f.ndiv, f.dist)
-
-    f1.w = copy_darray!(f.w, f.ndiv, f.dist)
-    f1.wb = copy_darray!(f.wb, f.ndiv, f.dist)
-    f1.rhs = copy_darray!(f.rhs, f.ndiv, f.dist)
-
-    f1.mark = copy_darray!(f.mark, f.ndiv, f.dist)
-    f1.target_id = copy_darray!(f.target_id, f.ndiv, f.dist)
-
-    f1.boundx = copy(f.boundx)
-    f1.boundy = copy(f.boundy)
-    f1.boundz = copy(f.boundz)
-
-    f1.para = f.para
-    return f1
-end
-
-function copy_darray!(a::DArray{T, N, A} where T where N where A, ndiv::Int, dist::Array{Int}) 
-    tmp = Array{eltype(a)}(undef, size(a))
-    for i in eachindex(tmp)
-        tmp[i] = copy(a[i])
+        f1.u[:,id] = f.u[:,id]
+        f1.w[:,id] = f.w[:,id]
+        f1.wb[:,id] = f.wb[:,id]
+        f1.rhs[:,id] = f.rhs[:,id]
+        f1.target_id[:,id] = f.target_id[:,id]
     end
-    return distribute(tmp, procs = workers(), dist = dist)
+
+    f1.boundx = f.boundx
+    f1.boundy = f.boundy
+    f1.boundz = f.boundz
+
+    return f1
 end

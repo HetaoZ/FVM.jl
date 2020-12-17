@@ -37,22 +37,15 @@ end
 function fill_fluid!(f::Fluid, point1::Array, point2::Array, rho, u, p)
     e = pressure_to_e(rho, p, f.para["gamma"])
     w = status_to_w(rho, u, e)
-    @sync for pid in workers()
-        @spawnat pid begin
-            inds = localindices(f.rho)
-            bias = [inds[k][1] - 1 for k = 1:3]
-            for i in inds[1], j in inds[2], k in inds[3]
-                if MK.betweeneq([f.x[i], f.y[j], f.z[k]], point1, point2)
-                    localpart(f.rho)[i-bias[1], j-bias[2], k-bias[3]] = rho
-                    localpart(f.u)[i-bias[1], j-bias[2], k-bias[3]] = u
-                    localpart(f.p)[i-bias[1], j-bias[2], k-bias[3]] = p
-                    
-                    localpart(f.e)[i-bias[1], j-bias[2], k-bias[3]] = e
-                    localpart(f.w)[i-bias[1], j-bias[2], k-bias[3]] = w
-                end
-            end
+    for id in CartesianIndices(f.rho)
+        if MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], point1, point2)
+            f.rho[id] = rho
+            f.u[:,id] = u
+            f.e[id] = e
+            f.p[id] = p
+            f.w[:,id] = w
         end
-    end    
+    end 
 end
 
 function clear_fluid_in_box!(f, point1, point2)
@@ -85,13 +78,13 @@ function review(f::Fluid)
     println("  number of cells : ", length(f.rho))
     println("  size of cells : ", size(f.rho))
     println("# distribution")
-    showdist(f.rho)
+    println("  number of workers : ", nworkers())
     println("# boundaries")
     println("  axis 1 : ", f.boundx)
     println("  axis 2 : ", f.boundy)
     println("  axis 3 : ", f.boundz)
     
     println("# physical status")
-    println("  rho ∈ ", [minimum(f.rho), maximum(f.rho)])
-    println("  p ∈ ", [minimum(f.p), maximum(f.p)])
+    println("  rho ∈  ", [minimum(f.rho), maximum(f.rho)])
+    println("  p ∈  ", [minimum(f.p), maximum(f.p)])
 end

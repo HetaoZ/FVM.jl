@@ -1,8 +1,8 @@
 
 module FVM
 using DelimitedFiles, Printf, Distributed, LinearAlgebra, Statistics, WriteVTK
+using SharedArrays
 using DUtils
-using DistributedArrays
 using MathKits; const MK = MathKits
 export Fluid
 

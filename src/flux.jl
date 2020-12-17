@@ -86,14 +86,14 @@ function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axi
 
     f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux_scheme = flux_scheme)
 
-    if abs(f[1]) > 1e4
-        println("f = ", f)
-        println("fL = ", fL)
-        println("fR = ", fR)
-        println("wL = ", wL)
-        println("wR = ", wR)
-        exit()
-    end
+    # if abs(f[1]) > 1e4
+    #     println("f = ", f)
+    #     println("fL = ", fL)
+    #     println("fR = ", fR)
+    #     println("wL = ", wL)
+    #     println("wR = ", wR)
+    #     exit()
+    # end
 
     return f
 end
