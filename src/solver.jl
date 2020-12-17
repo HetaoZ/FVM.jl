@@ -107,6 +107,7 @@ function update_rhs!(f::Fluid)
             for i in inds[1], j in inds[2], k in inds[3]
 
                 if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
+                    
                     rhs = zeros(Float64, 5)
                     ws = Array{Float64,2}(undef, 5, 5)
                     # axis 1
@@ -117,6 +118,10 @@ function update_rhs!(f::Fluid)
                         end
                     end
                     rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 1) / f.d[1]
+
+                    # if (i,j,k) == (17,3,1)
+                    #     println("rhs = ", rhs, "  -- x")
+                    # end
                     
                     # if rhs[1] != 0.0
                     # println("-- update_rhs: 1 --")
@@ -133,6 +138,11 @@ function update_rhs!(f::Fluid)
                             end
                         end
                         rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 2) / f.d[2]  
+
+                        # if (i,j,k) == (17,3,1)
+                        #     println("rhs = ", rhs, "  -- y")
+                        # end
+
                         # axis 3
                         if f.realdim > 2
                             for jj in 1:5
@@ -142,12 +152,20 @@ function update_rhs!(f::Fluid)
                                 end
                             end
                             rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 3) / f.d[3] 
+
+                            # if (i,j,k) == (17,3,1)
+                            #     println("rhs = ", rhs, "  -- z")
+                            # end
                         end  
                     end 
                     
                     localpart(f.rhs)[i-bias[1], j-bias[2], k-bias[3]] = rhs
 
-
+                    # if abs(rhs[1]) > 1e10 && (i,j,k) == (17,3,1)
+                    #     println("rhs = ", rhs)
+                    #     println((i,j,k))
+                    #     exit()
+                    # end
                 end
             end
         end
