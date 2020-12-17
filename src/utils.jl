@@ -20,3 +20,14 @@ function get_point_located_cell!(x::Vector{Float64}, f::Fluid)
     return ip
 end
 
+function check_mass!(f::Fluid)
+    id = [f.ng+1:f.ng+f.nmesh[1], f.ng+1:f.ng+f.nmesh[2], f.ng+1:f.ng+f.nmesh[3]]
+    if f.realdim < 3
+        id[3] = 1:1
+    end
+    if f.realdim < 2
+        id[2] = 1:1
+    end
+
+    return sum(f.rho[id[1], id[2], id[3]]) * prod(f.d[1:f.realdim])
+end

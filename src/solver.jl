@@ -67,7 +67,8 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
         if MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
             w = coeff[1] * f.w[:, id] + coeff[2] * f.wb[:, id] + coeff[3] * f.rhs[:, id] * dt
 
-            w = correct_cell_w(w, f.para["gamma"])
+            ## This correction may cause mass loss.
+            # w = correct_cell_w(w, f.para["gamma"]) 
 
             f.w[:, id] = w
 
