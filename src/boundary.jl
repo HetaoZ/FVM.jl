@@ -6,7 +6,7 @@ function update_bounds!(f::Fluid)
     ng = f.ng
     nmesh = f.nmesh
 
-    for id in CartesianIndices(f.rho)
+    @sync @distributed for id in CartesianIndices(f.rho)
         i, j, k = id[1], id[2], id[3]
         if i < ng + 1
             rho = f.rho[2*ng+1-i, j, k]

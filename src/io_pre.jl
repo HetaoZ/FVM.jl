@@ -37,7 +37,7 @@ end
 function fill_fluid!(f::Fluid, point1::Array, point2::Array, rho, u, p)
     e = pressure_to_e(rho, p, f.para["gamma"])
     w = status_to_w(rho, u, e)
-    for id in CartesianIndices(f.rho)
+    @sync @distributed for id in CartesianIndices(f.rho)
         if MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], point1, point2)
             f.rho[id] = rho
             f.u[:,id] = u

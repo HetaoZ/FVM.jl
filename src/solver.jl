@@ -34,18 +34,17 @@ function advance!(f::Fluid, dt::Float64)
 end
 
 function backup_w!(f)
-    for id in eachindex(f.w)
+    @sync @distributed for id in eachindex(f.w)
         f.wb[id] = f.w[id]
     end     
 end
 
 function time_step!(f::Fluid; CFL::Float64 = 0.1)
     smax = 0.
-    for id in eachindex(f.rho)
+    smax = @sync @distributed (max) for id in eachindex(f.rho)
         s = sound_speed(f.rho[id], f.p[id], f.para["gamma"])
         u = f.u[id]
         smax = maximum([smax; s .+ map(abs, u)])
-        
     end
     dt = minimum(f.d[1:f.realdim]) / smax * CFL
     if isnan(dt)
@@ -63,7 +62,7 @@ end
 function update_cells!(f::Fluid, rk::Int, dt::Float64)
     coeff = RK_COEFF[:, rk]
 
-    for id in CartesianIndices(f.rho)
+    @sync @distributed for id in CartesianIndices(f.rho)
         if MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
             w = coeff[1] * f.w[:, id] + coeff[2] * f.wb[:, id] + coeff[3] * f.rhs[:, id] * dt
 
@@ -83,7 +82,7 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
 end
 
 function update_rhs!(f::Fluid)
-    for id in CartesianIndices(f.rho)
+    @sync @distributed for id in CartesianIndices(f.rho)
         i, j, k = id[1], id[2], id[3]
         if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
             rhs = zeros(Float64, 5)
