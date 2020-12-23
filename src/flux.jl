@@ -220,8 +220,8 @@ function interp(FM2::Array{Float64,1},FM1::Array{Float64,1},FP1::Array{Float64,1
     # (4,4) = 9.0e-5
     # 
 
-    opt1 = opt[3]
-    opt2 = opt[1]
+    opt1 = opt[5]
+    opt2 = opt[4]
 
     FL = @. FM1 + 0.5 * (FM1 - FM2) * limiter(rL, opt1)
     FR = @. FP1 - 0.5 * (FP1 - FM1) * limiter(rR, opt1)
