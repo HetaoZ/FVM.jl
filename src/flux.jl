@@ -202,18 +202,125 @@ MUSCL scheme
 """
 function interp(FM2::Array{Float64,1},FM1::Array{Float64,1},FP1::Array{Float64,1},FP2::Array{Float64,1})
     # MUSCL sample points: (FM2 - FM1 - pipe - FP1 - FP2 )
-    n = length(FM2)
-    FL = zeros(Float64,n)
-    FR = zeros(Float64,n)
-    for i = 1:n
-        FL[i] = FM1[i] + 0.5 * minmod(FM1[i] - FM2[i], FP1[i] - FM1[i])
-        FR[i] = FP1[i] - 0.5 * minmod(FP1[i] - FM1[i], FP2[i] - FP1[i])
+    
+    # minmod limiter: old expression
+    # FL =@. FM1 + 0.5 * minmod(FM1 - FM2, FP1 - FM1)
+    # FR =@. FP1 - 0.5 * minmod(FP1 - FM1, FP2 - FP1)
+
+    # mimod limiter: new expression
+    rL = @. map(limited_r, FP1 - FM1, FM1 - FM2)
+    rR = @. map(limited_r, FP2 - FP1, FP1 - FM1)
+
+    opt = ("superbee", "van Leer mean", "van Leer", "van Albaba", "minmod")
+
+    # compare dt at Step 20 and LF flux
+    # LF:
+    # (5,5) < (4,5) < (3,5) < (2,5) < (1,5) = 7.1e-4, small oscillations but unsymmetric
+    # (5,4) = 6.7e-4, small oscillations and symmetric
+    # (4,4) = 9.0e-5
+    # 
+
+    opt1 = opt[3]
+    opt2 = opt[1]
+
+    FL = @. FM1 + 0.5 * (FM1 - FM2) * limiter(rL, opt1)
+    FR = @. FP1 - 0.5 * (FP1 - FM1) * limiter(rR, opt1)
+
+    FL[1] = FM1[1] + 0.5 * (FM1[1] - FM2[1]) * limiter(rL[1], opt2)
+    FR[1] = FP1[1] - 0.5 * (FP1[1] - FM1[1]) * limiter(rR[1], opt2)
+
+    # mixed limiter
+    # rL = @. map(limited_r, FP1 - FM1, FM1 - FM2)
+    # rR = @. map(limited_r, FP2 - FP1, FP1 - FM1)
+
+    # FL = Vector{Float64}(undef, 5)
+    # FR = Vector{Float64}(undef, 5)
+
+    # @. FL[2:5] = FM1[2:5] + 0.5 * (FM1[2:5] - FM2[2:5]) * van_leer_limiter(rL[2:5])
+    # @. FR[2:5] = FP1[2:5] - 0.5 * (FP1[2:5] - FM1[2:5]) * van_leer_limiter(rR[2:5])
+
+    # FL[1] = FM1[1] + 0.5 * (FM1[1] - FM2[1]) * superbee_limiter(rL[1])
+    # FR[1] = FP1[1] - 0.5 * (FP1[1] - FM1[1]) * superbee_limiter(rR[1])
+
+    return FL, FR
+end
+
+function limited_r(d1, d2)
+    if d2 == 0.
+        return 0.
+    else
+        return d1/ d2
     end
-    return FL,FR
+end
+
+# -----------------------------------------------
+# Limiters in high-to-low order of resolution of shock saves
+# -----------------------------------------------
+function limiter(r::Float64, name::String)
+    if name == "superbee"
+        return superbee_limiter(r)
+    elseif name == "van Leer mean"
+        return van_leer_mean_limiter(r)
+    elseif name == "van Leer"
+        return van_leer_limiter(r)
+    elseif name == "van Albaba"
+        return van_albaba_limiter(r)
+    elseif name == "minmod"
+        return minmod_limiter(r)
+    else
+        error("undef")
+    end
+end
+
+"""
+superbee limiter
+"""
+function superbee_limiter(r::Float64)
+    return max(min(2*r,1), min(r,2))
+end
+
+"""
+van Leer mean (double minmod) limiter
+"""
+function van_leer_mean_limiter(r::Float64)
+    if r <= 0.
+        return 0.
+    else
+        return minimum([2*r, 2, (1+r)/2])
+    end
+end
+
+"""
+van Leer limiter
+"""
+function van_leer_limiter(r::Float64)
+    if 1 + r == 0.
+        return 0.
+    else
+        return (r + abs(r)) / (1 + r)
+    end
+end
+
+"""
+van Albaba limiter
+"""
+function van_albaba_limiter(r::Float64)
+    return (r^2+r)/(1+r^2)
 end
 
 """
 minmod limiter
+"""
+function minmod_limiter(r::Float64)
+    if r <= 0.
+        return 0.
+    else
+        return min(r, 1.)
+    end
+end
+
+"""
+minmod function
 """
 function minmod(a::Float64, b::Float64)
     if abs(a) < abs(b)

@@ -125,8 +125,13 @@ function correct_cell_w(w, gamma)
     # elseif w[1] < 0 || w[end] < 0 || pressure(w, gamma) < 0
     #     w = zeros(Float64, 5)
     # end
-    if w[1] < 0 #|| w[end] < 0 || pressure(w, gamma) < 0
-        w = zeros(Float64, 5)
+    rho, u, e, p = w_to_status(w, gamma)
+    if rho < 0.
+        return zeros(Float64, 5)
     end
+    if e < 0.
+        return [0., 0., 0., 0., 0.]
+    end
+
     return w
 end
