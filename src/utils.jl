@@ -84,25 +84,22 @@ function check_mass!(f::Fluid)
 end
 
 function correct_cell_w(w, gamma, rho0, u0, e0)
-    # if sign.([w[1], w[end], pressure(w, gamma)]) == [-1.0, -1.0, -1.0]
-    #     # @warn "Negative mass density"
-    #     # println(w)
-    # elseif w[1] < 0 || w[end] < 0 || pressure(w, gamma) < 0
-    #     w = zeros(Float64, 5)
-    # end
+
     rho, u, e, p = w_to_status(w, gamma)
-    if rho < 0.
+    if rho <= 0.
+        return zeros(Float64, 5)
+    end
+    if e > 1e7*e0
         return status_to_w(rho0, u0, e0)
     end
     if isnan(rho+e+p+sum(u))
         return status_to_w(rho0, u0, e0)
     end
     if e < 0.
-        return status_to_w(rho0, u0, e0)
+        return status_to_w(rho, u0, e0)
     end
     if pressure(w, gamma) < 0.
-        return status_to_w(rho0, u0, e0)
+        return status_to_w(rho, u0, e0)
     end
-
     return w
 end
