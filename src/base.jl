@@ -27,8 +27,7 @@ mutable struct Fluid
     wb::SharedArray{Float64,4}
     rhs::SharedArray{Float64,4}
 
-    mark::SharedArray{Int8,3}
-    target_id::SharedArray{Int,4}
+    marker::SharedArray{Int8,3}
 
     boundx::Vector{String}
     boundy::Vector{String}
@@ -37,7 +36,9 @@ mutable struct Fluid
     para::Dict
 end
 
-function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1, 1, 1], nmesh::Vector{Int} = [1, 1, 1], ng::Int = 2, para::Dict = Dict("rho0"=>0.,
+function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1, 1, 1], nmesh::Vector{Int} = [1, 1, 1], ng::Int = 2, para::Dict = Dict())
+
+    default_para = Dict("rho0"=>0.,
     "u0"=>[0., 0., 0.],
     "e0"=>0.,
     "p0"=>0.,
@@ -51,8 +52,13 @@ function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1
     "total is summed"=>false, 
     "viscosity"=>false,
     "reconst scheme"=>"MUSCL", 
-    "flux scheme"=>"AUSM"
-    ))
+    "flux scheme"=>"AUSM",
+    "fill forever"=>[]
+    )
+
+    for key in keys(para)
+        default_para[key] = para[key]
+    end
 
     d = (point2 - point1) ./ nmesh
 
@@ -89,11 +95,10 @@ function Fluid(; realdim::Int = 3, point1::Array = [0, 0, 0], point2::Array = [1
     SharedArray(zeros(Float64, (5, NX, NY, NZ))),
 
     SharedArray(ones(Int8, (NX, NY, NZ))),
-    SharedArray(zeros(Int, (3, NX, NY, NZ))),
 
     ["none", "none"],
     ["none", "none"],
     ["none", "none"],
 
-    para)
+    default_para)
 end

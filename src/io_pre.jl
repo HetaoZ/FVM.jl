@@ -48,6 +48,11 @@ function fill_fluid!(f::Fluid, point1::Array, point2::Array, rho, u, p)
     end 
 end
 
+function fill_fluid_forever!(f::Fluid, point1::Array, point2::Array, rho, u, p)
+    push!(f.para["fill forever"], (point1, point2, rho, u, p))
+    fill_fluid!(f, point1, point2, rho, u, p)
+end
+
 function clear_fluid_in_box!(f, point1, point2)
     fill_fluid!(f, point1, point2, 0., [0., 0., 0.], 0.)
 end

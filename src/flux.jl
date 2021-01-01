@@ -24,6 +24,10 @@ function get_ausm_flux!(fL::Vector{Float64}, fR::Vector{Float64}, wL::Vector{Flo
 
     a_int = max(0.5 * (aL + aR), 1.0)
 
+    if a_int < 1e-14 || isnan(a_int)
+        a_int = 1e14
+    end
+
     Ma_L, Ma_R = vel_L / a_int, vel_R / a_int
     
     Ma_bar_sq = (vel_L^2 + vel_R^2) / (2.0*a_int^2)
@@ -35,7 +39,7 @@ function get_ausm_flux!(fL::Vector{Float64}, fR::Vector{Float64}, wL::Vector{Flo
 
     rho_int = (rhoL + rhoR) * 0.5
 
-    if rho_int == 0.0 || fa == 0.0
+    if rho_int < 1e-14 || fa < 1e-14
         Ma_int = 0.0
     else
         Ma_int = MMa_p4_L + MMa_m4_R - AUSM_Kp/fa*max(1.0 - AUSM_sigma*Ma_bar_sq, 0.0)*(pR - pL)/(rho_int*a_int^2)
@@ -99,7 +103,7 @@ function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axi
 end
 
 function get_flux_vars(w::Vector{Float64}, gamma::Float64)
-    if w[1] == 0.
+    if w[1] < 1e-14
         rho, u, E, p, a = 0., zeros(Float64, 3), 0., 0., 0.
     else
         rho = w[1]
@@ -114,7 +118,7 @@ function get_flux_vars(w::Vector{Float64}, gamma::Float64)
 end
 
 function get_lf_flux!(FL::Vector{Float64},FR::Vector{Float64},WL::Vector{Float64},WR::Vector{Float64}, gamma::Float64)
-    if WL[1] == 0.
+    if WL[1] < 1e-14
         uL, EL, pL, WL, aL = zeros(Float64, 3), 0., 0., zeros(Float64, length(WL)), 0.
     else
         uL = WL[2:end-1] ./ WL[1]
@@ -219,6 +223,10 @@ function interp(FM2::Array{Float64,1},FM1::Array{Float64,1},FP1::Array{Float64,1
     # (5,4) = 6.7e-4, small oscillations and symmetric
     # (4,4) = 9.0e-5
     # 
+
+    # (2,3) : no
+    # (2,2): no
+    #（3,4）:no
 
     opt1 = opt[2]
     opt2 = opt[3]

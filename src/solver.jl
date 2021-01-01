@@ -24,6 +24,10 @@ function advance!(f::Fluid, dt::Float64)
         # println("-- advance_fluid: 5 --")
         # showfield!(f.cells, "rho", 13:20)
 
+        for filled_values in f.para["fill forever"]
+            fill_fluid!(f, filled_values...)
+        end
+
         update_bounds!(f)
 
         # println("-- advance_fluid: 6 --")
@@ -63,13 +67,10 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
     coeff = RK_COEFF[:, rk]
 
     @sync @distributed for id in CartesianIndices(f.rho)
-        if f.mark[id] > 0
-            if MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
+        if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
+                
                 w = coeff[1] * f.w[:, id] + coeff[2] * f.wb[:, id] + coeff[3] * f.rhs[:, id] * dt
-    
-                ## This correction may cause mass loss.
-                w = correct_cell_w(w, f.para["gamma"]) 
-    
+
                 f.w[:, id] = w
     
                 rho, u, e, p = w_to_status(w, f.para["gamma"]) 
@@ -79,6 +80,17 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
                 f.e[id] = e
                 f.p[id] = p
             end
+    end
+
+    correct_cells!(f)
+end
+
+function correct_cells!(f::Fluid)
+    @sync @distributed for id in CartesianIndices(f.rho)
+        if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
+
+            f.w[:, id] = correct_cell_w(f.w[:, id], f.para["gamma"], f.para["rho0"], f.para["u0"], f.para["e0"])  ## This correction may cause mass loss.
+
         end
     end
 end
@@ -86,8 +98,7 @@ end
 function update_rhs!(f::Fluid)
     @sync @distributed for id in CartesianIndices(f.rho)
         i, j, k = id[1], id[2], id[3]
-        if f.mark[id] > 0
-            if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
+        if f.marker[id] > 0 && MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
                 rhs = zeros(Float64, 5)
                 ws = Array{Float64,2}(undef, 5, 5)
                 # axis 1
@@ -113,25 +124,7 @@ function update_rhs!(f::Fluid)
                 end 
                 
                 f.rhs[:,id] = rhs
-            end        
+                   
         end
     end    
 end 
-
-function correct_cell_w(w, gamma)
-    # if sign.([w[1], w[end], pressure(w, gamma)]) == [-1.0, -1.0, -1.0]
-    #     # @warn "Negative mass density"
-    #     # println(w)
-    # elseif w[1] < 0 || w[end] < 0 || pressure(w, gamma) < 0
-    #     w = zeros(Float64, 5)
-    # end
-    rho, u, e, p = w_to_status(w, gamma)
-    if rho < 0.
-        return zeros(Float64, 5)
-    end
-    if e < 0.
-        return [0., 0., 0., 0., 0.]
-    end
-
-    return w
-end
