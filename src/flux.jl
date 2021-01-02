@@ -3,10 +3,11 @@
 MUSCL scheme
 """
 function bi_interp!(axis::Int,WM2::Array{Float64,1},WM1::Array{Float64,1},WP1::Array{Float64,1},WP2::Array{Float64,1}, gamma::Float64)
-    FM2,FM1,FP1,FP2 = w2f(axis,WM2,WM1,WP1,WP2, gamma::Float64)
-    FL, FR = interp(FM2,FM1,FP1,FP2)
+    # FM2,FM1,FP1,FP2 = w2f(axis,WM2,WM1,WP1,WP2, gamma::Float64)
+    # FL, FR = interp(FM2,FM1,FP1,FP2)
     WL, WR = interp(WM2,WM1,WP1,WP2)
-    return FL,FR,WL,WR
+    FL, FR = w2f(axis, WL, gamma), w2f(axis, WR, gamma)
+    return FL, FR, WL, WR
 end
 
 function bi_interp!(axis::Int,WM1::Array{Float64,1},WP1::Array{Float64,1}, gamma::Float64)
@@ -80,6 +81,7 @@ get_dflux!(reconst_scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int)
 'axis' stands for the space dimension of the flux.
 """
 function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
+
     if reconst_scheme == "MUSCL"
         fL, fR, wL, wR = get_muscl_stencil_interp!(ws, para, axis = axis)
     elseif reconst_scheme == "WENO"
@@ -88,31 +90,46 @@ function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axi
         error("undef reconst scheme")
     end
 
-    f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux_scheme = flux_scheme)
+    wL = correct_cell_w(wL, para["gamma"], para["rho0"], para["u0"], para["e0"])
+    wR = correct_cell_w(wR, para["gamma"], para["rho0"], para["u0"], para["e0"])
 
-    # if abs(f[1]) > 1e4
-    #     println("f = ", f)
-    #     println("fL = ", fL)
-    #     println("fR = ", fR)
-    #     println("wL = ", wL)
-    #     println("wR = ", wR)
-    #     exit()
-    # end
+    try
+        f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux_scheme = flux_scheme)
 
-    return f
+        return f
+    catch
+        println("ws = ")
+        display(ws)
+        println()
+        println(axis)
+        println("wL = ",wL)
+        println("wR = ",wR)
+        println("fL = ",fL)
+        println("fR = ",fR)
+        error()
+    end
 end
 
 function get_flux_vars(w::Vector{Float64}, gamma::Float64)
     if w[1] < 1e-14
         rho, u, E, p, a = 0., zeros(Float64, 3), 0., 0., 0.
-    else
+    elseif w[1] > 0
         rho = w[1]
-        u = w[2:end-1] ./ w[1]
-        E = w[end] / w[1]
-        e = E - 0.5 * MK.norm2(u)
-        p = pressure(w[1], e, gamma)
+        u = w[2:end-1] ./ rho
+        E = w[end] / rho
+        e = E - 0.5 * norm(u)^2
+        p = pressure(rho, e, gamma)
+        if p <= 0
+            println("p = ",p)
+            println("w = ",w)
+            error("")
+        end
         # a = p < 0 ? 0.0 : sound_speed(rho = w[1], p = p, gamma = gamma)
-        a = sound_speed(w[1], p, gamma)
+        a = sound_speed(rho, p, gamma)
+
+    else
+        println("w = ",w)
+        error("")
     end
     return rho, u, E, p, a
 end
@@ -123,7 +140,7 @@ function get_lf_flux!(FL::Vector{Float64},FR::Vector{Float64},WL::Vector{Float64
     else
         uL = WL[2:end-1] ./ WL[1]
         EL = WL[end] / WL[1]
-        eL = EL - 0.5 * MK.norm2(uL)
+        eL = EL - 0.5 * norm(uL)^2
         pL = pressure(WL[1], eL, gamma)
         # if pL < 0.
         #     aL = 0.
@@ -131,12 +148,12 @@ function get_lf_flux!(FL::Vector{Float64},FR::Vector{Float64},WL::Vector{Float64
             aL = sound_speed(WL[1], pL, gamma)
         # end
     end
-    if WR[1] == 0.
+    if WR[1] < 1e-14
         uR, ER, pR, WR, aR = zeros(Float64, 3), 0., 0., zeros(Float64, length(WL)), 0.
     else
         uR = WR[2:end-1] ./ WR[1]
         ER = WR[4]/WR[1]
-        eR = ER - 0.5 * MK.norm2(uR)
+        eR = ER - 0.5 * norm(uR)^2
         pR = pressure(WR[1], eR, gamma)
         # if pR < 0.
         #     aR = 0.
@@ -228,8 +245,8 @@ function interp(FM2::Array{Float64,1},FM1::Array{Float64,1},FP1::Array{Float64,1
     # (2,2): no
     #（3,4）:no
 
-    opt1 = opt[2]
-    opt2 = opt[3]
+    opt1 = opt[5]
+    opt2 = opt[5]
 
     FL = @. FM1 + 0.5 * (FM1 - FM2) * limiter(rL, opt1)
     FR = @. FP1 - 0.5 * (FP1 - FM1) * limiter(rR, opt1)

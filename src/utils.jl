@@ -86,20 +86,36 @@ end
 function correct_cell_w(w, gamma, rho0, u0, e0)
 
     rho, u, e, p = w_to_status(w, gamma)
-    if rho <= 0.
+    if rho < -1e-14
+        println(w)
+        println((rho,u,e,p))
+        error("rho < 0 ")
         return zeros(Float64, 5)
     end
-    if e > 1e7*e0
-        return status_to_w(rho0, u0, e0)
-    end
+    
     if isnan(rho+e+p+sum(u))
+        println(w)
+        println((rho,u,e,p))
+        error("isnan(rho+e+p+sum(u)) ")
         return status_to_w(rho0, u0, e0)
     end
     if e < 0.
-        return status_to_w(rho, u0, e0)
+        # println(w)
+        # println((rho,u,e,p))
+        # error("e < 0. ")
+        return status_to_w(rho, u, e0*1e-7)
+    end
+    if e > 1e7*e0
+        println(w)
+        println((rho,u,e,p))
+        error("e > 1e7*e0 ")
+        return status_to_w(rho0, u0, e0)
     end
     if pressure(w, gamma) < 0.
-        return status_to_w(rho, u0, e0)
+        # println(w)
+        # println((rho,u,e,p))
+        # error("pressure(w, gamma) < 0. ")
+        return status_to_w(rho, u, e0*1e-7)
     end
     return w
 end
