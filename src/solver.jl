@@ -93,7 +93,6 @@ function correct_cells!(f::Fluid)
         if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
 
             w = correct_cell_w(f.w[:, id], f.para["gamma"], f.para["rho0"], f.para["u0"], f.para["e0"])  ## This correction may cause mass loss.
-
             f.w[:, id] = w
 
             rho, u, e, p = w_to_status(w, f.para["gamma"]) 
