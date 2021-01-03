@@ -75,12 +75,12 @@ function get_ausm_flux!(fL::Vector{Float64}, fR::Vector{Float64}, wL::Vector{Flo
     return f
 end
 
-get_dflux!(reconst_scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int) = get_flux!(reconst_scheme, ws[:,1:4], para, axis = axis) - get_flux!(reconst_scheme, ws[:,2:5], para, axis = axis)
+get_dflux!(id, reconst_scheme::String, ws::Array{Float64, 2}, para::Dict, axis::Int) = get_flux!(id, reconst_scheme, ws[:,1:4], para, axis = axis) - get_flux!(id, reconst_scheme, ws[:,2:5], para, axis = axis)
 
 """
 'axis' stands for the space dimension of the flux.
 """
-function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
+function get_flux!(id, reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axis::Int = -10, flux_scheme::String = "AUSM")
 
     if reconst_scheme == "MUSCL"
         fL, fR, wL, wR = get_muscl_stencil_interp!(ws, para, axis = axis)
@@ -91,6 +91,7 @@ function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axi
     end
 
     wL = correct_cell_w(wL, para["gamma"], para["rho0"], para["u0"], para["e0"])
+
     wR = correct_cell_w(wR, para["gamma"], para["rho0"], para["u0"], para["e0"])
 
     try
@@ -106,7 +107,6 @@ function get_flux!(reconst_scheme::String, ws::Array{Float64,2}, para::Dict; axi
         println("wR = ",wR)
         println("fL = ",fL)
         println("fR = ",fR)
-        error()
     end
 end
 

@@ -44,6 +44,9 @@ function backup_w!(f)
 end
 
 function time_step!(f::Fluid; CFL::Float64 = 0.1)
+    
+    # correct_cells!(f)
+
     smax = 0.
     smax = @sync @distributed (max) for id in eachindex(f.rho)
         s = sound_speed(f.rho[id], f.p[id], f.para["gamma"])
@@ -89,8 +92,16 @@ function correct_cells!(f::Fluid)
     @sync @distributed for id in CartesianIndices(f.rho)
         if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
 
-            f.w[:, id] = correct_cell_w(f.w[:, id], f.para["gamma"], f.para["rho0"], f.para["u0"], f.para["e0"])  ## This correction may cause mass loss.
+            w = correct_cell_w(f.w[:, id], f.para["gamma"], f.para["rho0"], f.para["u0"], f.para["e0"])  ## This correction may cause mass loss.
 
+            f.w[:, id] = w
+
+            rho, u, e, p = w_to_status(w, f.para["gamma"]) 
+    
+            f.rho[id] = rho
+            f.u[:,id] = u
+            f.e[id] = e
+            f.p[id] = p
         end
     end
 end
@@ -105,21 +116,21 @@ function update_rhs!(f::Fluid)
                 for jj in 1:5
                     ws[:, jj] = f.w[:, i+jj-3, j, k]
                 end
-                rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 1) / f.d[1]
+                rhs += get_dflux!(id, f.para["reconst scheme"], ws, f.para, 1) / f.d[1]
     
                 # axis 2
                 if f.realdim > 1
                     for jj in 1:5
                         ws[:, jj] = f.w[:, i, j+jj-3, k]
                     end
-                    rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 2) / f.d[2]  
+                    rhs += get_dflux!(id, f.para["reconst scheme"], ws, f.para, 2) / f.d[2]  
     
                     # axis 3
                     if f.realdim > 2
                         for jj in 1:5
                             ws[:, jj] = f.w[:, i, j, k+jj-3]
                         end
-                        rhs += get_dflux!(f.para["reconst scheme"], ws, f.para, 3) / f.d[3] 
+                        rhs += get_dflux!(id, f.para["reconst scheme"], ws, f.para, 3) / f.d[3] 
                     end  
                 end 
                 
