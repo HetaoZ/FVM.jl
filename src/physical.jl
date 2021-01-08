@@ -16,7 +16,7 @@ end
 function pressure_to_e(rho, p, gamma)
     if rho < 1e-14
         return 0.
-    elseif rho > 0 && p > 0
+    elseif rho > 0 && p >= 0
         return p / (gamma - 1.0) / rho 
     else
         println("(rho, p) = ", (rho, p))
@@ -27,9 +27,10 @@ end
 function sound_speed(rho, p, gamma)
     if rho < 1e-14
         return 0.
-    elseif rho > 0 && p > 0
+    elseif rho > 0 && p >= 0
         return  sqrt(gamma * p / rho)
     else
+
         println("(rho, p) = ", (rho, p))
         error("error when sound_speed")
     end

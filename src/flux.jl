@@ -3,9 +3,18 @@
 MUSCL scheme
 """
 function bi_interp!(axis::Int,WM2::Array{Float64,1},WM1::Array{Float64,1},WP1::Array{Float64,1},WP2::Array{Float64,1}, gamma::Float64)
-    # FM2,FM1,FP1,FP2 = w2f(axis,WM2,WM1,WP1,WP2, gamma::Float64)
-    # FL, FR = interp(FM2,FM1,FP1,FP2)
     WL, WR = interp(WM2,WM1,WP1,WP2)
+    
+    # check if p > 0
+    rhoL, uL, eL, pL = w_to_status(WL, gamma)
+    rhoR, uR, eR, pR = w_to_status(WR, gamma)
+    if pL <= 0
+        WL = WM1
+    end
+    if pR <= 0
+        WR = WP1
+    end
+    
     FL, FR = w2f(axis, WL, gamma), w2f(axis, WR, gamma)
     return FL, FR, WL, WR
 end
@@ -91,9 +100,14 @@ function get_flux!(id, reconst_scheme::String, ws::Array{Float64,2}, para::Dict;
     end
 
     wL = correct_cell_w(wL, para["gamma"], para["rho0"], para["u0"], para["e0"])
-
     wR = correct_cell_w(wR, para["gamma"], para["rho0"], para["u0"], para["e0"])
 
+    # rhoR, uR, eR, pR = FVM.w_to_status(wR, para["gamma"])
+
+    # if pR < 0
+    #     wR = status_to_w(rhoR, uR,  para["u0"] * 1e-14)
+    # end
+    
     try
         f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux_scheme = flux_scheme)
 
@@ -107,29 +121,28 @@ function get_flux!(id, reconst_scheme::String, ws::Array{Float64,2}, para::Dict;
         println("wR = ",wR)
         println("fL = ",fL)
         println("fR = ",fR)
+        error("error in w")
+        
     end
 end
 
 function get_flux_vars(w::Vector{Float64}, gamma::Float64)
     if w[1] < 1e-14
         rho, u, E, p, a = 0., zeros(Float64, 3), 0., 0., 0.
-    elseif w[1] > 0
+    else
         rho = w[1]
         u = w[2:end-1] ./ rho
         E = w[end] / rho
         e = E - 0.5 * norm(u)^2
         p = pressure(rho, e, gamma)
-        if p <= 0
+        if p < 0
+            println("-- get_flux_vars: 1 --")
             println("p = ",p)
             println("w = ",w)
             error("")
         end
         # a = p < 0 ? 0.0 : sound_speed(rho = w[1], p = p, gamma = gamma)
         a = sound_speed(rho, p, gamma)
-
-    else
-        println("w = ",w)
-        error("")
     end
     return rho, u, E, p, a
 end
@@ -218,19 +231,43 @@ function get_stencil_flux!(FL::Vector{Float64}, FR::Vector{Float64}, WL::Vector{
     return f 
 end
 
+# """
+# rho-dominating MUSCL scheme
+# """
+# function interp(FM2::Array{Float64,1},FM1::Array{Float64,1},FP1::Array{Float64,1},FP2::Array{Float64,1})
+#     # MUSCL sample points: (FM2 - FM1 - pipe - FP1 - FP2 )
+
+#     if abs(FM1[1]-FM2[1]) > abs(FP1[1]-FM1[1])
+#         selection = [0, 1]
+#     else
+#         selection = [1, 0]
+#     end
+#     FL = FM1 + 0.5 * selection' * [FM1-FM2, FP1-FM1]
+    
+#     if abs(FP1[1]-FM1[1]) > abs(FP2[1]-FP1[1])
+#         selection = [0, 1]
+#     else
+#         selection = [1, 0]
+#     end
+#     FR = FP1 - 0.5 * selection' * [FP1-FM1, FP2-FP1]
+
+    
+#     return FL, FR
+# end
+
 """
 MUSCL scheme
 """
-function interp(FM2::Array{Float64,1},FM1::Array{Float64,1},FP1::Array{Float64,1},FP2::Array{Float64,1})
-    # MUSCL sample points: (FM2 - FM1 - pipe - FP1 - FP2 )
+function interp(WM2::Array{Float64,1},WM1::Array{Float64,1},WP1::Array{Float64,1},WP2::Array{Float64,1})
+    # MUSCL sample points: (WM2 - WM1 - pipe - WP1 - WP2 )
     
     # minmod limiter: old expression
-    # FL =@. FM1 + 0.5 * minmod(FM1 - FM2, FP1 - FM1)
-    # FR =@. FP1 - 0.5 * minmod(FP1 - FM1, FP2 - FP1)
+    # FL =@. WM1 + 0.5 * minmod(WM1 - WM2, WP1 - WM1)
+    # FR =@. WP1 - 0.5 * minmod(WP1 - WM1, WP2 - WP1)
 
     # mimod limiter: new expression
-    rL = @. map(limited_r, FP1 - FM1, FM1 - FM2)
-    rR = @. map(limited_r, FP2 - FP1, FP1 - FM1)
+    rL = @. map(limited_r, WP1 - WM1, WM1 - WM2)
+    rR = @. map(limited_r, WP2 - WP1, WP1 - WM1)
 
     opt = ("superbee", "van Leer mean", "van Leer", "van Albaba", "minmod")
 
@@ -248,26 +285,15 @@ function interp(FM2::Array{Float64,1},FM1::Array{Float64,1},FP1::Array{Float64,1
     opt1 = opt[5]
     opt2 = opt[5]
 
-    FL = @. FM1 + 0.5 * (FM1 - FM2) * limiter(rL, opt1)
-    FR = @. FP1 - 0.5 * (FP1 - FM1) * limiter(rR, opt1)
+    WL = @. WM1 + 0.5 * (WM1 - WM2) * limiter(rL, opt1)
+    WR = @. WP1 - 0.5 * (WP1 - WM1) * limiter(rR, opt1)
 
-    FL[1] = FM1[1] + 0.5 * (FM1[1] - FM2[1]) * limiter(rL[1], opt2)
-    FR[1] = FP1[1] - 0.5 * (FP1[1] - FM1[1]) * limiter(rR[1], opt2)
+    WL[1] = WM1[1] + 0.5 * (WM1[1] - WM2[1]) * limiter(rL[1], opt2)
+    WR[1] = WP1[1] - 0.5 * (WP1[1] - WM1[1]) * limiter(rR[1], opt2)
 
-    # mixed limiter
-    # rL = @. map(limited_r, FP1 - FM1, FM1 - FM2)
-    # rR = @. map(limited_r, FP2 - FP1, FP1 - FM1)
+    
 
-    # FL = Vector{Float64}(undef, 5)
-    # FR = Vector{Float64}(undef, 5)
-
-    # @. FL[2:5] = FM1[2:5] + 0.5 * (FM1[2:5] - FM2[2:5]) * van_leer_limiter(rL[2:5])
-    # @. FR[2:5] = FP1[2:5] - 0.5 * (FP1[2:5] - FM1[2:5]) * van_leer_limiter(rR[2:5])
-
-    # FL[1] = FM1[1] + 0.5 * (FM1[1] - FM2[1]) * superbee_limiter(rL[1])
-    # FR[1] = FP1[1] - 0.5 * (FP1[1] - FM1[1]) * superbee_limiter(rR[1])
-
-    return FL, FR
+    return WL, WR
 end
 
 function limited_r(d1, d2)

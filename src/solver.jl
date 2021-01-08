@@ -57,7 +57,7 @@ function time_step!(f::Fluid; CFL::Float64 = 0.1)
     if isnan(dt)
         # if smax > 0.
             println("smax = ", smax)
-            exit()
+            error("NaN")
         # end
     end
     # if dt < TOL_STEP
@@ -70,7 +70,8 @@ function update_cells!(f::Fluid, rk::Int, dt::Float64)
     coeff = RK_COEFF[:, rk]
 
     @sync @distributed for id in CartesianIndices(f.rho)
-        if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
+        if MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
+        # if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
                 
                 w = coeff[1] * f.w[:, id] + coeff[2] * f.wb[:, id] + coeff[3] * f.rhs[:, id] * dt
 
@@ -90,7 +91,8 @@ end
 
 function correct_cells!(f::Fluid)
     @sync @distributed for id in CartesianIndices(f.rho)
-        if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
+        if MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
+        # if f.marker[id] > 0 && MK.betweeneq([f.x[id[1]], f.y[id[2]], f.z[id[3]]], f.point1, f.point2)
 
             w = correct_cell_w(f.w[:, id], f.para["gamma"], f.para["rho0"], f.para["u0"], f.para["e0"])  ## This correction may cause mass loss.
             f.w[:, id] = w
@@ -108,7 +110,8 @@ end
 function update_rhs!(f::Fluid)
     @sync @distributed for id in CartesianIndices(f.rho)
         i, j, k = id[1], id[2], id[3]
-        if f.marker[id] > 0 && MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
+        if MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
+        # if f.marker[id] > 0 && MK.betweeneq([f.x[i], f.y[j], f.z[k]], f.point1, f.point2)
                 rhs = zeros(Float64, 5)
                 ws = Array{Float64,2}(undef, 5, 5)
                 # axis 1
