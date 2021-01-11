@@ -102,28 +102,32 @@ function get_flux!(id, reconst_scheme::String, ws::Array{Float64,2}, para::Dict;
     wL = correct_cell_w(wL, para["gamma"], para["rho0"], para["u0"], para["e0"])
     wR = correct_cell_w(wR, para["gamma"], para["rho0"], para["u0"], para["e0"])
 
-    # rhoR, uR, eR, pR = FVM.w_to_status(wR, para["gamma"])
+    rhoL, uL, eL, pL = FVM.w_to_status(wL, para["gamma"])
+    rhoR, uR, eR, pR = FVM.w_to_status(wR, para["gamma"])
 
-    # if pR < 0
-    #     wR = status_to_w(rhoR, uR,  para["u0"] * 1e-14)
-    # end
+    if pL < 0
+        wL = status_to_w(rhoL, uL,  para["e0"] * 1e-14)
+    end
+    if pR < 0
+        wR = status_to_w(rhoR, uR,  para["e0"] * 1e-14)
+    end
     
-    try
+    # try
         f = get_stencil_flux!(fL, fR, wL, wR, para, axis = axis, flux_scheme = flux_scheme)
 
         return f
-    catch
-        println("ws = ")
-        display(ws)
-        println()
-        println(axis)
-        println("wL = ",wL)
-        println("wR = ",wR)
-        println("fL = ",fL)
-        println("fR = ",fR)
-        error("error in w")
+    # catch
+    #     println("ws = ")
+    #     display(ws)
+    #     println()
+    #     println(axis)
+    #     println("wL = ",wL)
+    #     println("wR = ",wR)
+    #     println("fL = ",fL)
+    #     println("fR = ",fR)
+    #     error("error in w")
         
-    end
+    # end
 end
 
 function get_flux_vars(w::Vector{Float64}, gamma::Float64)
@@ -136,13 +140,15 @@ function get_flux_vars(w::Vector{Float64}, gamma::Float64)
         e = E - 0.5 * norm(u)^2
         p = pressure(rho, e, gamma)
         if p < 0
-            println("-- get_flux_vars: 1 --")
-            println("p = ",p)
-            println("w = ",w)
-            error("")
+        #     println("-- get_flux_vars: 1 --")
+        #     println("p = ",p)
+        #     println("w = ",w)
+        #     error("")
+            a = sound_speed(rho, 1e-14, gamma)
+        else
+            # a = p < 0 ? 0.0 : sound_speed(rho = w[1], p = p, gamma = gamma)
+            a = sound_speed(rho, p, gamma)
         end
-        # a = p < 0 ? 0.0 : sound_speed(rho = w[1], p = p, gamma = gamma)
-        a = sound_speed(rho, p, gamma)
     end
     return rho, u, E, p, a
 end
